@@ -1,0 +1,135 @@
+%% GCS AI Project Portal — End-to-end workflow (swimlanes)
+%% Render: npx @mermaid-js/mermaid-cli -i docs/end-to-end-portal-workflow.mmd -o docs/diagrams/end-to-end-portal-workflow.png
+
+flowchart TD
+  subgraph ACCESS["🔐 Access (all roles)"]
+    direction TB
+    L1["Login — pick demo role"]
+    L2["Dashboard — KPIs, lifecycle chart, role callouts"]
+    L1 --> L2
+  end
+
+  subgraph SUB["👤 Submitter / Employee"]
+    direction TB
+    S1["Submit New Project\n(4-step wizard)"]
+    S2["Review recommendations\n(3 combos + rankings)"]
+    S3["Select combo OR\nCustomise tool stack"]
+    S4["Continue to Project Detail"]
+    S5["Track project progress\n(filter My Projects)"]
+    S6["Report benefit hours\n(Benefits tab, when eligible)"]
+    S1 --> S2 --> S3 --> S4 --> S5
+    S5 -.-> S6
+  end
+
+  subgraph BA["📋 Business Analyst"]
+    direction TB
+    B1["Support Assessment\n(supporting)"]
+    B2["Support Development /\nDeployment / Improvement"]
+    B3["Support Enablement\n(cross-cutting)"]
+  end
+
+  subgraph GOV["⚖️ Governance Lead"]
+    direction TB
+    G1["Qualify / Reject submission\nAssessment — PRIMARY"]
+    G2["Policy controls & risk tier\nPolicy — PRIMARY"]
+    G3["Improvement & change mgmt\nImprovement — PRIMARY"]
+    G4["Decommission approval\nDecommissioning — PRIMARY"]
+    G1 --> G2
+    G3 --> G4
+  end
+
+  subgraph RISK["🛡️ Risk & Compliance"]
+    direction TB
+    R1["Risk assessment\nAssessment — supporting"]
+    R2["Policy review\nPolicy — supporting"]
+    R3["Supplier / vendor sign-off\nSupplier Oversight — PRIMARY"]
+    R4["Monitor in Use\nUse — supporting"]
+    R5["Decommission risk review\nDecommissioning — supporting"]
+    R1 --> R2 --> R3
+  end
+
+  subgraph DATA["🔧 Data Engineering"]
+    direction TB
+    D1["Support supplier review\nSupplier Oversight — supporting"]
+    D2["Build & validate solution\nDevelopment — PRIMARY"]
+    D3["Support deployment\nDeployment — supporting"]
+    D4["Support improvements\nImprovement — supporting"]
+    D1 --> D2 --> D3 --> D4
+  end
+
+  subgraph AIPM["🚀 AI Program Manager"]
+    direction TB
+    P1["Support supplier review"]
+    P2["Support development"]
+    P3["Release to production\nDeployment — PRIMARY"]
+    P4["Enablement programs\nEnablement — PRIMARY"]
+    P1 --> P2 --> P3
+  end
+
+  subgraph MAINT["🔁 Maintenance & Sustainability"]
+    direction TB
+    M1["Operate in production\nUse — PRIMARY"]
+    M2["Support deployment"]
+    M3["Support improvement /\ndecommission"]
+    M1 --> M3
+  end
+
+  subgraph SPON["✅ Sponsor"]
+    direction TB
+    SP1["Consult at qualification\nAssessment — consulted"]
+    SP2["Validate reported benefits\nBenefits & Closure tab"]
+  end
+
+  subgraph SYS["⚙️ Portal (System)"]
+    direction TB
+    Y1["Persist to localStorage"]
+    Y2["Run recommendation engine\n(rules-based scoring)"]
+    Y3["Store combos, rankings,\ntoolStack, audit log"]
+    Y4["Enforce canActOnStage\n(role × stage gates)"]
+    Y5["Auto-update project status\n(Qualified → InProgress → Completed…)"]
+    Y1 --> Y2 --> Y3
+    Y3 --> Y4 --> Y5
+  end
+
+  subgraph ALL["📚 All roles (parallel)"]
+    direction TB
+    T1["Training Catalog\nbrowse + Recommended strip"]
+  end
+
+  subgraph ADM["🛠️ Admin"]
+    direction TB
+    A1["Manage Tools / Trainings / Combos"]
+    A2["View seed users (read-only)"]
+    A3["Reset demo data"]
+  end
+
+  subgraph OUTCOMES["Outcomes"]
+    direction TB
+    X1["Project Rejected"]
+    X2["On Hold"]
+  end
+
+  %% Cross-lane workflow
+  L2 --> S1
+  L2 --> T1
+  L2 --> A1
+  S1 --> Y2
+  Y2 --> S2
+  S3 --> Y3
+  S4 --> G1
+  G1 -->|Qualified| G2
+  G2 --> R3
+  R3 --> D2
+  D2 --> P3
+  P3 --> M1
+  M1 -->|enhance| G3
+  M1 -->|retire| G4
+  S6 --> SP2
+  G1 -->|Reject| X1
+  D2 -.->|Blocked| X2
+  Y4 -.-> G1
+  Y4 -.-> R3
+  Y4 -.-> D2
+  Y4 -.-> P3
+  Y4 -.-> M1
+  Y5 -.-> S5

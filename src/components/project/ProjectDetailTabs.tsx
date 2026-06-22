@@ -1,0 +1,669 @@
+import { useState } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Info,
+  Play,
+  Sparkles,
+} from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { toast } from 'sonner'
+import { RoleBadge } from '@/components/common/RoleBadge'
+import { StatusBadge } from '@/components/common/StatusBadge'
+import { ComboCard, getDisplayedCombos } from '@/components/recommendations/RecommendationSections'
+import { ToolStackChips } from '@/components/common/ToolStackChips'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { ROLE_STYLES, getUserInitials } from '@/lib/roleStyles'
+import {
+  LIFECYCLE_STAGES,
+  canActOnStage,
+  getAllowedTransitions,
+  getStageMeta,
+  type StageTransitionOption,
+} from '@/lib/lifecycle'
+import {
+  formatAuditAction,
+  getUserById,
+  getUserDisplayName,
+  recentAuditEntries,
+  shortActorName,
+} from '@/lib/projectDisplay'
+import { comboMatchesStack } from '@/lib/toolStack'
+import { cn, formatDateTime, formatRelative, humanizeRole, humanizeStage } from '@/lib/utils'
+import type { Project, Tool, ToolCombo, Training, User } from '@/types'
+
+type ProjectTabsProps = {
+  project: Project
+  tools: Tool[]
+  combos: ToolCombo[]
+  trainings: Training[]
+  currentUser: User | null
+  activeTab: string
+  onTabChange: (tab: string) => void
+  onCustomiseStack: () => void
+  onRequestTransition: (transition: StageTransitionOption) => void
+  onReportBenefits: (hours: number) => void
+  onValidateBenefits: () => void
+  onApplyCombo: (comboId: string) => void
+}
+
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  collapsedHint,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  collapsedHint?: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="mb-3.5">
+      <button
+        type="button"
+        className="mb-2 flex w-full items-center gap-1.5 text-[11px] font-semibold text-stone-900"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 text-indigo-600" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-stone-400" />
+        )}
+        {title}
+        {!open && collapsedHint && (
+          <span className="ml-1 text-[10px] font-normal text-stone-500">{collapsedHint}</span>
+        )}
+      </button>
+      {open && children}
+    </div>
+  )
+}
+
+function TransitionButtons({
+  project,
+  currentUser,
+  stage,
+  onRequestTransition,
+}: {
+  project: Project
+  currentUser: User | null
+  stage: Project['currentStage']
+  onRequestTransition: (transition: StageTransitionOption) => void
+}) {
+  const status = project.stageStatus[stage]
+  const transitions =
+    stage === project.currentStage ? getAllowedTransitions(stage, status) : []
+  const canAct = currentUser ? canActOnStage(currentUser.role, stage) : false
+  const meta = getStageMeta(stage)
+
+  if (transitions.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {transitions.map((transition) => {
+        const button = (
+          <Button
+            key={`${transition.toStage}-${transition.toStatus}`}
+            type="button"
+            variant="outline"
+            className={cn('h-8 flex-1 text-xs', !canAct && 'cursor-not-allowed opacity-50')}
+            disabled={!canAct}
+            onClick={() => canAct && onRequestTransition(transition)}
+          >
+            {transition.label}
+          </Button>
+        )
+
+        if (canAct) return button
+
+        return (
+          <Tooltip key={`${transition.toStage}-${transition.toStatus}`}>
+            <TooltipTrigger asChild>
+              <span className="flex-1">{button}</span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs">
+              Only {humanizeRole(meta.primaryOwnerRole)} or supporting roles can act on this stage.
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
+    </div>
+  )
+}
+
+export function ProjectOverviewTab({
+  project,
+  tools,
+  trainings,
+  currentUser,
+  onTabChange,
+  onRequestTransition,
+}: Pick<
+  ProjectTabsProps,
+  'project' | 'tools' | 'trainings' | 'currentUser' | 'onTabChange' | 'onRequestTransition'
+>) {
+  const stageMeta = getStageMeta(project.currentStage)
+  const currentStatus = project.stageStatus[project.currentStage]
+  const canAct = currentUser ? canActOnStage(currentUser.role, project.currentStage) : false
+  const activity = recentAuditEntries(project, 4)
+
+  const stackTrainings = trainings.filter((training) =>
+    training.toolIds.some((toolId) => project.toolStack.some((entry) => entry.toolId === toolId)),
+  )
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px]">
+      <div className="border-b-[0.5px] border-stone-200 p-4 lg:border-r lg:border-b-0">
+        <CollapsibleSection title="Basics">
+          <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
+            <div>
+              <span className="text-stone-500">Group: </span>
+              {project.group}
+            </div>
+            <div>
+              <span className="text-stone-500">Site: </span>
+              {project.site}
+            </div>
+            <div>
+              <span className="text-stone-500">Department: </span>
+              {project.department}
+            </div>
+            <div>
+              <span className="text-stone-500">Target users: </span>
+              {project.submission.targetUsers}
+            </div>
+            <div>
+              <span className="text-stone-500">Est. users: </span>
+              {project.submission.estimatedUsers}
+            </div>
+            <div>
+              <span className="text-stone-500">Est. benefit: </span>
+              {project.submission.expectedBenefitHours} hrs/month
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <hr className="mb-3.5 border-stone-200" />
+
+        <CollapsibleSection title="Use Case">
+          <div className="space-y-2 text-[11px] leading-relaxed text-stone-600">
+            <p>
+              <span className="text-stone-500">Problem: </span>
+              {project.submission.problem}
+            </p>
+            <p>
+              <span className="text-stone-500">Goal: </span>
+              {project.submission.goal}
+            </p>
+            <p>
+              <span className="text-stone-500">Expected outcome: </span>
+              {project.submission.expectedOutcome}
+            </p>
+          </div>
+        </CollapsibleSection>
+
+        <hr className="mb-3.5 border-stone-200" />
+
+        <CollapsibleSection
+          title="Data & Technical Readiness"
+          defaultOpen={false}
+          collapsedHint="(collapsed)"
+        >
+          <div className="space-y-2 text-[11px] text-stone-600">
+            <p>
+              <span className="text-stone-500">Data sources: </span>
+              {project.submission.dataSources}
+            </p>
+            <p>
+              <span className="text-stone-500">Sensitivity: </span>
+              {project.submission.dataSensitivity}
+            </p>
+            <p>
+              <span className="text-stone-500">Access: </span>
+              {project.submission.dataAccessStatus}
+            </p>
+            <p>
+              <span className="text-stone-500">Skill level: </span>
+              {project.submission.skillLevelAvailable}
+            </p>
+            <p>
+              <span className="text-stone-500">Existing tools: </span>
+              {project.submission.existingTools.join(', ')}
+            </p>
+            <p>
+              <span className="text-stone-500">Integrations: </span>
+              {project.submission.integrationTargets.join(', ')}
+            </p>
+          </div>
+        </CollapsibleSection>
+
+        <div className="border-t-[0.5px] border-stone-200 pt-3.5">
+          <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+            <Play className="h-3.5 w-3.5 text-amber-700" />
+            Current Stage Actions — {humanizeStage(project.currentStage)}
+            {currentStatus === 'InProgress' && (
+              <StatusBadge kind="stage" status="InProgress" className="ml-1" />
+            )}
+          </div>
+
+          <div className="mb-2.5 rounded-md bg-stone-100 p-3 text-[11px]">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="font-medium text-stone-900">Primary owner</span>
+              <RoleBadge role={stageMeta.primaryOwnerRole} />
+            </div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium text-stone-900">Supporting roles</span>
+              <div className="flex flex-wrap gap-1">
+                {stageMeta.supportingRoles.map((role) => (
+                  <RoleBadge key={role} role={role} />
+                ))}
+              </div>
+            </div>
+            {!canAct && currentUser && (
+              <div className="flex items-start gap-1.5 rounded-md border-[0.5px] border-[#CECBF6] bg-[#EEEDFE] px-2.5 py-2 text-[11px] text-[#26215C]">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                You are viewing as {humanizeRole(currentUser.role)}. Only{' '}
+                {humanizeRole(stageMeta.primaryOwnerRole)} and supporting roles can advance this
+                stage.
+              </div>
+            )}
+          </div>
+
+          <TransitionButtons
+            project={project}
+            currentUser={currentUser}
+            stage={project.currentStage}
+            onRequestTransition={onRequestTransition}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 p-4">
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-stone-900">Recent Activity</span>
+            <button
+              type="button"
+              className="text-[10px] text-indigo-700 hover:underline"
+              onClick={() => onTabChange('audit')}
+            >
+              View all →
+            </button>
+          </div>
+          <div className="space-y-2">
+            {activity.map((entry) => {
+              const actor = getUserById(entry.actorUserId)
+              const initials = actor ? getUserInitials(actor.displayName) : '??'
+              return (
+                <div key={entry.id} className="flex gap-2 text-[11px]">
+                  <div
+                    className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-semibold',
+                      actor ? ROLE_STYLES[actor.role].avatar : 'bg-stone-100 text-stone-600',
+                    )}
+                  >
+                    {initials}
+                  </div>
+                  <div>
+                    <p className="text-stone-900">
+                      <strong>{actor ? shortActorName(actor.displayName) : 'Unknown'}</strong>{' '}
+                      {formatAuditAction(entry, project.title)}
+                    </p>
+                    <p className="text-[10px] text-stone-500">
+                      {formatRelative(entry.timestamp)} · {humanizeRole(entry.actorRole)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <hr className="border-stone-200" />
+
+        <div>
+          <div className="mb-2 text-[11px] font-semibold text-stone-900">Tool Stack</div>
+          <div className="space-y-1.5">
+            {project.toolStack.map((entry) => {
+              const tool = tools.find((item) => item.id === entry.toolId)
+              if (!tool) return null
+              const isPrimary = entry.role === 'primary'
+              return (
+                <div
+                  key={entry.toolId}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md px-2.5 py-1.5',
+                    isPrimary ? 'bg-indigo-50' : 'bg-green-50',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'rounded px-1.5 py-0.5 text-[9px] font-bold text-white',
+                      isPrimary ? 'bg-indigo-600' : 'bg-[#1D9E75]',
+                    )}
+                  >
+                    {isPrimary ? 'PRIMARY' : 'ADD-ON'}
+                  </span>
+                  <span className="text-[11px] font-medium text-stone-900">{tool.name}</span>
+                  {entry.usageNote && (
+                    <span className="ml-auto text-[10px] text-stone-500">{entry.usageNote}</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <hr className="border-stone-200" />
+
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-stone-900">Recommended Trainings</span>
+            <Link to="/trainings" className="text-[10px] text-indigo-700 hover:underline">
+              View catalog →
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {stackTrainings.slice(0, 3).map((training) => (
+              <a
+                key={training.id}
+                href={training.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-between rounded-md bg-stone-100 px-2.5 py-2 text-[11px] hover:bg-stone-200/70"
+              >
+                <div>
+                  <div className="font-medium text-stone-900">{training.title}</div>
+                  <div className="text-[10px] text-stone-500">
+                    {training.format} · {training.durationHours}h
+                  </div>
+                </div>
+                <ExternalLink className="h-3 w-3 text-indigo-600" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ProjectLifecycleTab({
+  project,
+  currentUser,
+  onRequestTransition,
+}: Pick<ProjectTabsProps, 'project' | 'currentUser' | 'onRequestTransition'>) {
+  return (
+    <div className="space-y-3 p-4">
+      {LIFECYCLE_STAGES.map((meta) => {
+        const status = project.stageStatus[meta.stage]
+        const isCurrent = project.currentStage === meta.stage
+        return (
+          <div
+            key={meta.stage}
+            className={cn(
+              'rounded-lg border-[0.5px] border-stone-200 bg-white p-4',
+              isCurrent && 'border-indigo-200 bg-indigo-50/30',
+            )}
+          >
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-medium text-stone-900">{meta.label}</h3>
+              <StatusBadge kind="stage" status={status} />
+              {isCurrent && (
+                <span className="text-[10px] font-medium text-indigo-700">Current stage</span>
+              )}
+            </div>
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-stone-500">Primary owner:</span>
+              <RoleBadge role={meta.primaryOwnerRole} />
+              <span className="text-stone-500">Supporting:</span>
+              {meta.supportingRoles.map((role) => (
+                <RoleBadge key={role} role={role} />
+              ))}
+            </div>
+            {isCurrent && (
+              <TransitionButtons
+                project={project}
+                currentUser={currentUser}
+                stage={meta.stage}
+                onRequestTransition={onRequestTransition}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function ProjectRecommendationsTab({
+  project,
+  tools,
+  combos,
+  onCustomiseStack,
+  onApplyCombo,
+}: Pick<ProjectTabsProps, 'project' | 'tools' | 'combos' | 'onCustomiseStack' | 'onApplyCombo'>) {
+  const displayedCombos = getDisplayedCombos(
+    project.submission,
+    combos,
+    project.recommendedComboIds,
+  )
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-stone-900">Stored recommendations</div>
+          <p className="text-xs text-stone-500">
+            Read-only snapshot from submission scoring. Customise your stack to update the project.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+          onClick={onCustomiseStack}
+        >
+          Re-open Customise Stack
+        </Button>
+      </div>
+
+      {displayedCombos.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {displayedCombos.map((combo, index) => (
+            <ComboCard
+              key={combo.id}
+              combo={combo}
+              tools={tools}
+              index={index}
+              selected={comboMatchesStack(project.toolStack, combo)}
+              onSelect={() => onApplyCombo(combo.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-stone-900">
+          <Sparkles className="h-4 w-4 text-indigo-600" />
+          Top tool rankings
+        </div>
+        <div className="mb-3">
+          <span className="mb-1 block text-[10px] text-stone-500">Current stack</span>
+          <ToolStackChips toolStack={project.toolStack} tools={tools} showLabels />
+        </div>
+        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+          {project.recommendations.map((rec) => {
+            const tool = tools.find((item) => item.id === rec.toolId)
+            if (!tool) return null
+            return (
+              <div
+                key={rec.toolId}
+                className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]"
+              >
+                <div className="font-medium text-stone-900">
+                  #{rec.rank} {tool.name}
+                </div>
+                <div className="text-stone-500">
+                  {Math.round(rec.confidence * 100)}% confidence
+                </div>
+                <p className="mt-1 text-stone-600">{rec.rationale}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ProjectBenefitsTab({
+  project,
+  currentUser,
+  onReportBenefits,
+  onValidateBenefits,
+}: Pick<ProjectTabsProps, 'project' | 'currentUser' | 'onReportBenefits' | 'onValidateBenefits'>) {
+  const [hoursInput, setHoursInput] = useState(
+    project.reportedBenefitHours?.toString() ?? '',
+  )
+
+  const isSubmitter = currentUser?.id === project.submitterId
+  const isSponsor = currentUser?.id === project.sponsorId
+  const expected = project.submission.expectedBenefitHours
+  const reported = project.reportedBenefitHours
+
+  return (
+    <div className="space-y-4 p-4">
+      <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
+        <div className="mb-3 text-sm font-medium text-stone-900">Expected vs reported benefit</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-md bg-stone-100 p-3">
+            <div className="text-[10px] text-stone-500">Expected (submission)</div>
+            <div className="text-lg font-semibold text-stone-900">{expected} hrs/month</div>
+          </div>
+          <div className="rounded-md bg-indigo-50 p-3">
+            <div className="text-[10px] text-stone-500">Reported (actual)</div>
+            <div className="text-lg font-semibold text-indigo-900">
+              {reported !== null ? `${reported} hrs/month` : 'Not reported yet'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isSubmitter && (
+        <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
+          <div className="mb-2 text-sm font-medium text-stone-900">Report benefits</div>
+          <label className="mb-1.5 block text-[11px] text-stone-700">
+            Reported benefit hours per month
+          </label>
+          <Input
+            type="number"
+            min={0}
+            value={hoursInput}
+            onChange={(event) => setHoursInput(event.target.value)}
+            className="mb-3 h-9 max-w-xs text-xs"
+          />
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            onClick={() => {
+              const hours = Number(hoursInput)
+              if (!hours || hours <= 0) {
+                toast.error('Enter a valid number of hours.')
+                return
+              }
+              onReportBenefits(hours)
+            }}
+          >
+            Submit for sponsor validation
+          </Button>
+        </div>
+      )}
+
+      {isSponsor && reported !== null && (
+        <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
+          <div className="mb-2 text-sm font-medium text-stone-900">Sponsor validation</div>
+          <p className="mb-3 text-xs text-stone-600">
+            Submitter reported <strong>{reported} hrs/month</strong>.
+            {project.sponsorValidated
+              ? ' You have validated these benefits.'
+              : ' Review and validate when satisfied.'}
+          </p>
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            disabled={project.sponsorValidated}
+            onClick={onValidateBenefits}
+          >
+            {project.sponsorValidated ? 'Validated' : 'Validate'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function ProjectAuditLogTab({ project }: Pick<ProjectTabsProps, 'project'>) {
+  const entries = [...project.auditLog].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  )
+
+  return (
+    <div className="p-4">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-xs">Timestamp</TableHead>
+            <TableHead className="text-xs">Actor</TableHead>
+            <TableHead className="text-xs">From → To</TableHead>
+            <TableHead className="text-xs">Note</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.map((entry) => {
+            const actorName = getUserDisplayName(entry.actorUserId)
+            const fromLabel = entry.fromStage
+              ? `${humanizeStage(entry.fromStage)} (${entry.fromStatus ?? '—'})`
+              : '—'
+            const toLabel = `${humanizeStage(entry.toStage)} (${entry.toStatus})`
+            return (
+              <TableRow key={entry.id}>
+                <TableCell className="text-xs">
+                  <div>{formatDateTime(entry.timestamp)}</div>
+                  <div className="text-[10px] text-stone-500">
+                    {formatRelative(entry.timestamp)}
+                  </div>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <div className="font-medium text-stone-900">{actorName}</div>
+                  <RoleBadge role={entry.actorRole} className="mt-1" />
+                </TableCell>
+                <TableCell className="text-xs">
+                  {fromLabel} → {toLabel}
+                </TableCell>
+                <TableCell className="max-w-xs text-xs text-stone-600">{entry.note}</TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}

@@ -1,0 +1,96 @@
+# Cursor Rules — GCS AI Project Portal (Phase 0 Demo)
+
+You are helping build a frontend-only React demo of an internal portal for Teradyne's Global Customer Service (GCS) division. Read `/docs/PROJECT_BRIEF.md` before generating any non-trivial output.
+
+## Hard rules (never violate)
+
+1. **Stack is fixed.** Vite + React 18 + TypeScript + Tailwind CSS + shadcn/ui + React Router v6 + Zustand + lucide-react + recharts + date-fns + nanoid. Do not introduce other state libraries, CSS frameworks, or UI kits.
+
+2. **No backend.** Phase 0 is frontend only. All persistence is `localStorage` via Zustand `persist` middleware. Do not generate API routes, fetch calls to external services, or backend code.
+
+3. **No browser-storage in code that runs in an artifact-style sandbox.** This is a real Vite project running in a browser, so `localStorage` IS allowed here. (This rule exists because Cursor sometimes confuses the contexts.)
+
+4. **Azure-from-day-one interface rule.** Every external dependency — auth, file storage, LLM, database — must sit behind a TypeScript interface so it can be swapped without changing call sites. Stubbed implementations live in `src/lib/`. Examples: `IAuthProvider`, `IFileStore`, `ILlmProvider`. Even if the rest of the prompt does not mention this, apply it.
+
+5. **TypeScript strict mode.** No `any` unless unavoidable, no untyped function args, no `// @ts-ignore` without a comment explaining why.
+
+6. **No inline styles in components.** Use Tailwind utility classes. The mockup HTML uses inline styles only because it is a static reference — translate those styles to Tailwind when implementing in React. Exception: dynamic computed values (e.g. progress bar widths, chart bar heights) that cannot be expressed as Tailwind classes.
+
+7. **Design tokens are authoritative.** Colors, spacing, font sizes, border radii come from `/docs/DESIGN_TOKENS.md`. Do not invent new colors. If a needed token is missing, ask before adding it.
+
+8. **Mockup files are visual reference, not code to copy.** The HTML mockups in `/mockups/` show layout, colors, spacing, and component structure. Translate them to React + Tailwind + shadcn/ui — do not paste raw HTML/CSS into React components.
+
+## Folder structure (enforce strictly)
+
+```
+src/
+  components/
+    layout/         AppShell, Sidebar, Topbar, PageHeader, DemoBanner
+    common/         StatusBadge, RoleBadge, GroupBadge, EmptyState, ToolStackChips
+    dialogs/        CustomiseStackDialog, ConfirmDialog, FormDialog
+    ui/             shadcn/ui generated components only — never edit by hand
+  pages/            one file per route; no business logic, only composition
+  stores/           Zustand stores; one file per domain (auth, projects, catalog, ui)
+  data/             seed* files only; immutable exports
+  lib/              pure utilities, interfaces, engines (no React)
+  types/            type definitions; one barrel export
+  routes/           AppRoutes, ProtectedRoute
+```
+
+Page components import from `stores/`, `lib/`, `components/`. Stores import from `data/`, `lib/`, `types/`. `lib/` never imports from React. Violations of this dependency direction are bugs.
+
+## Naming conventions
+
+- Components: PascalCase files (`ToolStackChips.tsx`) and PascalCase exports.
+- Stores: camelCase files (`projectsStore.ts`) exporting `use<Domain>Store`.
+- Types: PascalCase exported from `src/types/index.ts`.
+- Constants: SCREAMING_SNAKE_CASE.
+- Tailwind colors use the indigo/green/amber/red mapping defined in `/docs/DESIGN_TOKENS.md` — never raw hex in components.
+
+## React patterns
+
+- Functional components only. No class components.
+- Custom hooks for non-trivial state derivation (`useProjectStats`, `useFilteredProjects`).
+- `useMemo` for derived data on dashboard charts; do not recompute on every render.
+- Forms use shadcn/ui inputs with controlled state held in local `useState` + a `submit` function that writes to the store. No form libraries (no react-hook-form, no formik) — keep it simple.
+- Toasts via `sonner` for every successful mutation. Never silent.
+
+## Multi-tool stack model — critical
+
+The portal supports a **stack** of tools per project, not a single tool. Every project has:
+- `toolStack: ToolStackEntry[]` where each entry has `role: 'primary' | 'supporting'` and optional `usageNote`.
+- Exactly one entry must have `role: 'primary'`.
+
+The recommendation engine returns **both** ranked individual tools AND pre-built `ToolCombo` stacks. Both feed the same `toolStack` shape. See `/docs/RECOMMENDATION_ENGINE_SPEC.md`.
+
+When discussing tools in UI:
+- Primary tool: indigo chip / 2px indigo border / `PRIMARY` badge.
+- Add-on tool: green chip / 1.5px green border / `ADD-ON` badge.
+- Never call an add-on "secondary" — the word is always "add-on" or "supporting".
+
+## Lifecycle and roles — critical
+
+There are 9 lifecycle stages and 9 roles. Role-based gating on stage transitions is enforced by `canActOnStage(role, stage)` in `src/lib/lifecycle.ts`. See `/docs/ROLE_LIFECYCLE_RACI.md` for the full matrix. Do not let a UI button trigger a transition the role can't perform — show the button disabled with a tooltip explaining why.
+
+## What "done" looks like for each prompt
+
+After running any prompt:
+1. `npm run build` succeeds with zero TypeScript errors.
+2. `npm run dev` renders without console errors.
+3. Every interactive element produces visible feedback (toast, navigation, state change).
+4. localStorage persists across hard refreshes — verify by refreshing in dev mode.
+5. The visible result matches the corresponding `MOCKUP-*` tab within reasonable variance.
+
+## Things to never do
+
+- Never generate placeholder lorem-ipsum text. Use the realistic seed content from `/docs/SEED_DATA_REFERENCE.md`.
+- Never use Material UI, Chakra, Ant Design, or any UI kit other than shadcn/ui.
+- Never use `<form>` element submission for anything — use button `onClick` handlers.
+- Never use `window.confirm` or `window.alert` — use the shadcn Dialog component.
+- Never silently catch errors — toast.error with a useful message.
+- Never style with `style={{ color: '#534AB7' }}` — use Tailwind classes mapped to design tokens.
+- Never add dependencies without saying so explicitly in the response.
+
+## When uncertain
+
+If the prompt is ambiguous or conflicts with these rules, ask one clarifying question before generating code. Do not silently guess.

@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GCS AI Project Portal — Mockups</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F7F6F2;
+    --bg-tertiary: #F1EFE8;
+    --text-primary: #1A1918;
+    --text-secondary: #5F5E5A;
+    --text-tertiary: #888780;
+    --border: #E2E0D8;
+    --border-subtle: #EEECE6;
+    --indigo: #534AB7;
+    --indigo-light: #EEEDFE;
+    --indigo-mid: #CECBF6;
+    --indigo-dark: #3C3489;
+    --green: #1D9E75;
+    --green-light: #F0FBF6;
+    --green-border: #A8DFC8;
+    --amber: #BA7517;
+    --amber-light: #FBEDD8;
+    --amber-dark: #EF9F27;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+    --orange: #B85C1A;
+    --orange-light: #FEF3EC;
+    --orange-border: #F9C89B;
+    --warning-bg: #FAEEDA;
+    --warning-text: #633806;
+    --radius-sm: 4px;
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; background: #E8E6DF; }
+
+  /* ── TAB NAV ── */
+  .tab-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: #1A1918;
+    display: flex; align-items: center; gap: 0;
+    padding: 0 16px;
+    border-bottom: 2px solid #534AB7;
+    overflow-x: auto;
+  }
+  .tab-nav-brand {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 10px 0;
+    border-right: 1px solid #333;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .tab-nav-brand .logo {
+    width: 24px; height: 24px; background: #534AB7; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 9px; font-weight: 700;
+  }
+  .tab-nav-brand span { color: #ccc; font-size: 12px; font-weight: 500; }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    color: #888; font-size: 11px; font-weight: 500;
+    padding: 14px 14px 12px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .tab-btn:hover { color: #ccc; }
+  .tab-btn.active { color: white; border-bottom-color: #534AB7; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── SHARED LAYOUT ── */
+  .screen {
+    display: flex; min-height: calc(100vh - 48px);
+    background: var(--bg-secondary);
+  }
+  .sidebar {
+    width: 200px; background: var(--bg-primary);
+    border-right: 0.5px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 16px 12px;
+    flex-shrink: 0;
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 6px 14px;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .sidebar-brand .logo {
+    width: 26px; height: 26px; background: var(--indigo);
+    border-radius: 6px; display: flex; align-items: center;
+    justify-content: center; color: white; font-size: 10px; font-weight: 700;
+  }
+  .sidebar-brand .name { font-size: 12px; font-weight: 500; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius);
+    font-size: 12px; color: var(--text-primary);
+    margin-bottom: 4px; cursor: pointer;
+    border: none; background: none; width: 100%; text-align: left;
+    transition: background 0.1s;
+  }
+  .nav-item:hover { background: var(--bg-secondary); }
+  .nav-item.active { background: var(--indigo); color: white; }
+  .nav-item .ti { font-size: 16px; color: var(--text-tertiary); }
+  .nav-item.active .ti { color: white; }
+  .sidebar-footer {
+    margin-top: auto; padding: 10px;
+    background: var(--bg-secondary); border-radius: var(--radius);
+    font-size: 11px; color: var(--text-secondary);
+    display: flex; gap: 6px; align-items: center;
+  }
+  .main { flex: 1; display: flex; flex-direction: column; background: var(--bg-tertiary); min-width: 0; }
+  .demo-banner {
+    background: var(--warning-bg);
+    border-bottom: 0.5px solid #F0CC85;
+    padding: 6px 20px; font-size: 11px;
+    color: var(--warning-text);
+    display: flex; gap: 6px; align-items: center;
+    flex-shrink: 0;
+  }
+  .topbar {
+    background: var(--bg-primary);
+    border-bottom: 0.5px solid var(--border);
+    padding: 12px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-size: 14px; font-weight: 500; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+  }
+  .page-content { padding: 20px; overflow: auto; flex: 1; }
+  .page-header { margin-bottom: 18px; }
+  .page-title { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  .page-subtitle { font-size: 12px; color: var(--text-secondary); }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px;
+  }
+  .card-header { font-size: 12px; font-weight: 500; margin-bottom: 12px; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .badge-indigo { background: var(--indigo-light); color: var(--indigo-dark); }
+  .badge-green { background: var(--green-light); color: #0F6E56; border: 0.5px solid var(--green-border); }
+  .badge-amber { background: var(--amber-light); color: var(--amber); }
+  .badge-red { background: var(--red-light); color: var(--red); }
+  .badge-gray { background: var(--bg-secondary); color: var(--text-secondary); }
+  .badge-primary { background: var(--indigo); color: white; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px; border-radius: var(--radius);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: none; transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-primary { background: var(--indigo); color: white; }
+  .btn-ghost { background: none; border: 0.5px solid var(--border); color: var(--text-secondary); }
+  .btn-sm { padding: 5px 12px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── CHIP STACK ── */
+  .tool-chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tool-chip-primary {
+    background: var(--indigo); color: white;
+    font-size: 10px; font-weight: 500;
+    padding: 3px 10px; border-radius: 4px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .tool-chip-addon {
+    background: var(--green-light); color: #0F6E56;
+    border: 0.5px solid var(--green-border);
+    font-size: 10px; padding: 3px 10px; border-radius: 4px;
+  }
+  .chip-sep { font-size: 10px; color: var(--text-tertiary); }
+
+  /* ── PROGRESS ── */
+  .progress-bar {
+    height: 5px; background: var(--bg-tertiary);
+    border-radius: 3px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .progress-fill-indigo { background: linear-gradient(90deg, var(--green), var(--indigo)); }
+  .progress-fill-plain { background: var(--indigo); }
+
+  /* ── GRID UTILS ── */
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+
+  /* ── KPI CARD ── */
+  .kpi-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .kpi-label { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 11px; margin-bottom: 6px; }
+  .kpi-value { font-size: 22px; font-weight: 500; }
+  .kpi-context { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* ── HBAR ── */
+  .hbar-row { margin-bottom: 11px; }
+  .hbar-label-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; }
+  .hbar-track { height: 8px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+  .hbar-fill { height: 100%; border-radius: 3px; }
+
+  /* ── ACTIVITY FEED ── */
+  .activity-row { display: flex; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-av {
+    width: 22px; height: 22px; border-radius: 50%;
+    font-size: 9px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .activity-text { font-size: 11px; color: var(--text-primary); }
+  .activity-link { color: #185FA5; }
+  .activity-meta { font-size: 10px; color: var(--text-tertiary); margin-top: 1px; }
+
+  /* ── STEP WIZARD ── */
+  .stepper { display: flex; align-items: flex-start; gap: 0; }
+  .step { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .step-connector-row { display: flex; align-items: center; width: 100%; }
+  .step-line { flex: 1; height: 2px; }
+  .step-line-done { background: var(--indigo); }
+  .step-line-todo { background: var(--border); }
+  .step-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 12px; font-weight: 600;
+  }
+  .step-circle-done { background: var(--indigo); color: white; }
+  .step-circle-active {
+    width: 32px; height: 32px;
+    background: var(--indigo-light); color: var(--indigo);
+    border: 2px solid var(--indigo);
+    box-shadow: 0 0 0 4px rgba(83,74,183,0.12);
+  }
+  .step-circle-todo { background: var(--bg-secondary); color: var(--text-tertiary); border: 1.5px solid var(--border); }
+  .step-circle-amber {
+    width: 32px; height: 32px;
+    background: var(--amber-light); color: var(--amber-dark);
+    border: 2.5px solid var(--amber-dark);
+    box-shadow: 0 0 0 4px rgba(239,159,39,0.15);
+  }
+  .step-label { font-size: 9px; font-weight: 500; margin-top: 4px; text-align: center; }
+  .step-status { font-size: 9px; text-align: center; }
+
+  /* ── RECOMMENDATION CARD ── */
+  .rec-card {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px;
+    position: relative; display: flex; flex-direction: column;
+  }
+  .rec-card-selected {
+    border: 2px solid var(--indigo);
+    box-shadow: 0 2px 8px rgba(83,74,183,0.12);
+  }
+  .rec-badge-top {
+    position: absolute; top: -1px; right: 12px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 10px; border-radius: 0 0 6px 6px;
+    color: white;
+  }
+  .conf-bar { height: 5px; background: var(--indigo-light); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+  .conf-fill-indigo { height: 100%; background: linear-gradient(90deg, var(--indigo), #7B72D6); }
+  .conf-fill-gray { height: 100%; background: #888780; }
+  .conf-fill-green { height: 100%; background: var(--green); }
+  .rules-list { font-size: 10px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 10px; }
+  .rule-ok { color: var(--green); }
+  .rule-neg { color: var(--text-tertiary); }
+  .training-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-secondary); border-radius: var(--radius);
+    padding: 5px 8px; margin-bottom: 4px; font-size: 10px;
+  }
+
+  /* ── DIALOG OVERLAY ── */
+  .dialog-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .dialog-box {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    width: 720px; max-width: 96vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    overflow: hidden;
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+  }
+  .dialog-header {
+    padding: 16px 20px;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-shrink: 0;
+  }
+  .dialog-body { display: grid; grid-template-columns: 1fr 260px; flex: 1; overflow: hidden; }
+  .dialog-catalog { padding: 16px; border-right: 0.5px solid var(--border); overflow-y: auto; }
+  .dialog-stack { padding: 16px; background: var(--bg-secondary); overflow-y: auto; display: flex; flex-direction: column; }
+  .dialog-footer {
+    padding: 12px 20px;
+    border-top: 0.5px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+  }
+  .tool-row-d {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--radius);
+    margin-bottom: 6px; cursor: pointer;
+    transition: border-color 0.1s, background 0.1s;
+    border: 0.5px solid var(--border);
+  }
+  .tool-row-d:hover { border-color: #CECBF6; }
+  .tool-row-d.primary-sel { border: 2px solid var(--indigo); background: var(--indigo-light); }
+  .tool-row-d.addon-sel { border: 1.5px solid var(--green); background: var(--green-light); }
+  .tool-row-d.skill-gap { border: 0.5px solid var(--orange-border); background: #FEF9F0; opacity: 0.85; }
+  .tool-icon-tile {
+    width: 30px; height: 30px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 16px;
+  }
+  .check-circle {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 11px;
+  }
+  .check-circle-done-indigo { background: var(--indigo); color: white; }
+  .check-circle-done-green { background: var(--green); color: white; }
+  .check-circle-empty { border: 1.5px solid var(--border); background: var(--bg-secondary); }
+
+  /* ── FORM ── */
+  .form-field { margin-bottom: 14px; }
+  .form-label { font-size: 11px; font-weight: 500; margin-bottom: 5px; display: block; }
+  .required { color: var(--red); }
+  .form-input {
+    border: 1.5px solid var(--indigo); border-radius: var(--radius);
+    padding: 8px 12px; font-size: 12px;
+    background: var(--bg-primary); color: var(--text-primary);
+    width: 100%; outline: none;
+  }
+  .form-input-plain {
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    padding: 8px 12px; font-size: 12px;
+    background: var(--bg-primary); color: var(--text-primary);
+    width: 100%; outline: none;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .form-input:focus { border-color: var(--indigo); }
+  .locked-step {
+    background: var(--bg-secondary); border-radius: var(--radius);
+    padding: 14px; text-align: center;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 0; border-bottom: 0.5px solid var(--border);
+    font-size: 11px;
+  }
+  .checklist-row:last-child { border-bottom: none; }
+
+  /* ── CATALOG GRID ── */
+  .training-card {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px;
+    display: flex; flex-direction: column;
+    transition: box-shadow 0.15s, transform 0.1s;
+  }
+  .training-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  .training-card-cs {
+    background: var(--bg-secondary); border: 0.5px dashed var(--border);
+    opacity: 0.75;
+  }
+  .format-badge { font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .fmt-self { background: var(--indigo-light); color: var(--indigo-dark); }
+  .fmt-video { background: var(--red-light); color: var(--red); }
+  .fmt-workshop { background: #F4E8F3; color: #6B4181; }
+  .fmt-instructor { background: #F4E8F3; color: #6B4181; }
+  .tool-tag { font-size: 9px; padding: 1px 6px; border-radius: 3px; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex; border-bottom: 0.5px solid var(--border);
+    background: var(--bg-secondary);
+  }
+  .inner-tab {
+    padding: 10px 16px; font-size: 12px; cursor: pointer;
+    border: none; background: none; color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: color 0.1s, border-color 0.1s;
+  }
+  .inner-tab:hover { color: var(--text-primary); }
+  .inner-tab.active { background: var(--bg-primary); color: var(--indigo); border-bottom-color: var(--indigo); font-weight: 500; }
+
+  /* ── MISC ── */
+  .sep { border: none; border-top: 0.5px solid var(--border); margin: 12px 0; }
+  .muted { color: var(--text-tertiary); }
+  .text-link { color: #185FA5; cursor: pointer; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .flex-center { display: flex; align-items: center; }
+  .gap-4 { gap: 4px; }
+  .gap-6 { gap: 6px; }
+  .gap-8 { gap: 8px; }
+  .gap-10 { gap: 10px; }
+  .gap-12 { gap: 12px; }
+  .mb-4 { margin-bottom: 4px; }
+  .mb-6 { margin-bottom: 6px; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-10 { margin-bottom: 10px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-14 { margin-bottom: 14px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-18 { margin-bottom: 18px; }
+  .mb-20 { margin-bottom: 20px; }
+  .fw5 { font-weight: 500; }
+  .fw6 { font-weight: 600; }
+  .fs-10 { font-size: 10px; }
+  .fs-11 { font-size: 11px; }
+  .fs-12 { font-size: 12px; }
+  .fs-13 { font-size: 13px; }
+  .fs-14 { font-size: 14px; }
+  .role-badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 500;
+  }
+  .callout {
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px;
+    display: flex; gap: 10px; align-items: center; font-size: 12px;
+  }
+  .callout-indigo { background: var(--indigo-light); border: 0.5px solid var(--indigo-mid); color: #26215C; }
+  .callout-green { background: #EAF3DE; border: 0.5px solid #B8D99A; color: #2E5219; }
+  .callout-amber { background: var(--amber-light); border: 0.5px solid #F0CC85; color: #6B4107; }
+  .hint-box {
+    background: var(--bg-primary); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px;
+  }
+  .hint-title { font-size: 10px; font-weight: 500; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+  .hint-line { font-size: 10px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 3px; }
+
+  /* ── RECOMMENDED STRIP ── */
+  .rec-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+  .rec-strip-card {
+    background: var(--bg-primary); border-radius: var(--radius-lg);
+    padding: 12px; min-width: 200px; max-width: 200px;
+    flex-shrink: 0; position: relative;
+    transition: box-shadow 0.15s;
+  }
+  .rec-strip-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .rec-strip-card-active { border: 2px solid var(--indigo); }
+  .rec-strip-card-plain { border: 0.5px solid var(--border); }
+
+  /* ── COMBO CARD ── */
+  .combo-card {
+    background: var(--bg-primary); border-radius: var(--radius-lg); padding: 14px;
+    position: relative; display: flex; flex-direction: column;
+    transition: box-shadow 0.15s;
+  }
+  .combo-card:hover { box-shadow: 0 2px 8px rgba(83,74,183,0.08); }
+  .combo-card-sel { border: 2px solid var(--indigo); box-shadow: 0 2px 8px rgba(83,74,183,0.12); }
+  .combo-card-plain { border: 0.5px solid var(--border); }
+  .combo-tool-row { display: flex; align-items: center; gap: 8px; border-radius: var(--radius); padding: 6px 8px; margin-bottom: 5px; }
+  .combo-primary-row { background: var(--indigo-light); }
+  .combo-addon-row { background: var(--bg-secondary); }
+
+  /* ── LIFECYCLE DETAIL ── */
+  .project-header-card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 14px; }
+  .proj-title { font-size: 17px; font-weight: 600; }
+  .proj-meta { display: flex; gap: 16px; font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
+  .proj-meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+  ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ TOP TAB NAV ══ -->
+<nav class="tab-nav">
+  <div class="tab-nav-brand">
+    <div class="logo">GCS</div>
+    <span>AI Project Portal</span>
+  </div>
+  <button class="tab-btn active" onclick="showTab('login')">MOCKUP-LOGIN</button>
+  <button class="tab-btn" onclick="showTab('dashboard')">MOCKUP-DASHBOARD</button>
+  <button class="tab-btn" onclick="showTab('wizard')">MOCKUP-SUBMISSION-WIZARD</button>
+  <button class="tab-btn" onclick="showTab('recs')">MOCKUP-RECOMMENDATIONS</button>
+  <button class="tab-btn" onclick="showTab('dialog')">MOCKUP-CUSTOMISE-STACK</button>
+  <button class="tab-btn" onclick="showTab('detail')">MOCKUP-PROJECT-DETAIL</button>
+  <button class="tab-btn" onclick="showTab('catalog')">MOCKUP-TRAINING-CATALOG</button>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-LOGIN
+══════════════════════════════════════════ -->
+<div id="tab-login" class="tab-content active">
+<div style="min-height:calc(100vh - 48px);background:linear-gradient(160deg,#fff 0%,#EEEDFE 100%);display:flex;align-items:center;justify-content:center;padding:32px 16px;">
+  <div style="width:100%;max-width:760px;">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:36px;height:36px;background:var(--indigo);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:13px;">GCS</div>
+        <span style="font-size:20px;font-weight:500;">AI Project Portal</span>
+      </div>
+      <p style="font-size:14px;color:var(--text-secondary);">Sign in — Demo Mode</p>
+    </div>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;text-align:left;">Select your role</p>
+    <div id="role-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+      <!-- cards injected by JS -->
+    </div>
+    <p style="text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:22px;">Phase 0 — VM-hosted demo &nbsp;·&nbsp; No real backend &nbsp;·&nbsp; No real auth</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-DASHBOARD
+══════════════════════════════════════════ -->
+<div id="tab-dashboard" class="tab-content">
+<div class="screen">
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="logo">GCS</div><div class="name">AI Project Portal</div></div>
+    <button class="nav-item active"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="nav-item"><i class="ti ti-circle-plus"></i>Submit Project</button>
+    <button class="nav-item"><i class="ti ti-folders"></i>Projects</button>
+    <button class="nav-item"><i class="ti ti-school"></i>Training Catalog</button>
+    <button class="nav-item"><i class="ti ti-settings"></i>Admin</button>
+    <div class="sidebar-footer"><i class="ti ti-info-circle"></i>Demo Mode · Phase 0</div>
+  </aside>
+  <div class="main">
+    <div class="demo-banner"><i class="ti ti-alert-triangle"></i>DEMO MODE — Phase 0. Data stored locally in your browser. No backend connected.</div>
+    <div class="topbar"><span class="topbar-title">Dashboard</span><div class="topbar-right"><i class="ti ti-bell" style="font-size:16px;color:var(--text-secondary);"></i><div class="avatar" style="background:var(--indigo-light);color:var(--indigo-dark);">JG</div></div></div>
+    <div class="page-content">
+      <!-- header -->
+      <div class="flex-between mb-18">
+        <div><div class="page-title">Dashboard</div><div class="page-subtitle">Welcome back, John. Here's what's happening across GCS AI projects.</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="badge badge-indigo">Governance Lead view</span>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i>Submit New Project</button>
+        </div>
+      </div>
+      <!-- kpi -->
+      <div class="grid-4 mb-12">
+        <div class="kpi-card"><div class="kpi-label"><i class="ti ti-folders"></i>Total Projects</div><div class="kpi-value">476</div><div class="kpi-context">Across all stages</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="ti ti-progress"></i>In Progress</div><div class="kpi-value">218</div><div class="kpi-context">Active builds</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="ti ti-circle-check"></i>Completed</div><div class="kpi-value">142</div><div class="kpi-context">Validated by sponsor</div></div>
+        <div class="kpi-card"><div class="kpi-label"><i class="ti ti-clock-hour-4"></i>Hours Saved</div><div class="kpi-value">12,480</div><div class="kpi-context">Per month, reported</div></div>
+      </div>
+      <!-- callout -->
+      <div class="callout callout-indigo mb-14"><i class="ti ti-shield-check" style="font-size:16px;"></i><span><strong>Pending qualification:</strong> 12 projects awaiting your review</span><span style="margin-left:auto;font-size:11px;cursor:pointer;">Review →</span></div>
+      <!-- row 1 charts -->
+      <div class="grid-2 mb-12">
+        <!-- lifecycle bar -->
+        <div class="card">
+          <div class="card-header">Projects by Lifecycle Stage</div>
+          <div style="display:flex;gap:6px;align-items:flex-end;height:100px;">
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:72px;transition:height 0.3s;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Assess</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:32px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Policy</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:28px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Supplier</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:64px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Develop</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:40px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Deploy</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:52px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Use</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:16px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Improve</div></div>
+            <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;gap:3px;"><div style="background:var(--indigo);border-radius:2px;width:100%;height:8px;" class="bar-hover"></div><div style="font-size:8px;color:var(--text-tertiary);">Decom.</div></div>
+          </div>
+        </div>
+        <!-- completion rate by group -->
+        <div class="card">
+          <div class="flex-between mb-12"><div class="card-header" style="margin:0;">Completion Rate by Group</div><span style="font-size:10px;color:var(--text-tertiary);">Completed / Submitted</span></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">PROGs</span><span class="fs-11" style="color:var(--text-secondary);">38% <span class="muted">· 122 of 321</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:38%;background:#1D9E75;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Engineering</span><span class="fs-11" style="color:var(--text-secondary);">29% <span class="muted">· 13 of 45</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:29%;background:var(--indigo);"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Field</span><span class="fs-11" style="color:var(--text-secondary);">25% <span class="muted">· 26 of 105</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:25%;background:#6B8FBF;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Marketing</span><span class="fs-11" style="color:var(--text-secondary);">20% <span class="muted">· 1 of 5</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:20%;background:#D4537E;"></div></div></div>
+        </div>
+      </div>
+      <!-- row 2 charts -->
+      <div class="grid-2 mb-12">
+        <div class="card">
+          <div class="flex-between mb-12"><div class="card-header" style="margin:0;">AI Adoption by Group</div><span style="font-size:10px;color:var(--text-tertiary);">% of group with an AI project</span></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Marketing</span><span class="fs-11" style="color:var(--text-secondary);">31% <span class="muted">· 5 of 16</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:31%;background:#D4537E;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">PROGs</span><span class="fs-11" style="color:var(--text-secondary);">33% <span class="muted">· 321 of 980</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:33%;background:#1D9E75;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Engineering</span><span class="fs-11" style="color:var(--text-secondary);">30% <span class="muted">· 45 of 150</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:30%;background:var(--indigo);"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Field</span><span class="fs-11" style="color:var(--text-secondary);">25% <span class="muted">· 105 of 420</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:25%;background:#6B8FBF;"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="flex-between mb-12"><div class="card-header" style="margin:0;">AI Adoption by Location</div><span style="font-size:10px;color:var(--text-tertiary);">% of site with an AI project</span></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Japan</span><span class="fs-11" style="color:var(--text-secondary);">75% <span class="muted">· 188 of 250</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:75%;background:#C53030;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Korea</span><span class="fs-11" style="color:var(--text-secondary);">32% <span class="muted">· 36 of 112</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:32%;background:#2B6CB0;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Costa Rica</span><span class="fs-11" style="color:var(--text-secondary);">21% <span class="muted">· 66 of 310</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:21%;background:#1D9E75;"></div></div></div>
+          <div class="hbar-row"><div class="hbar-label-row"><span style="font-size:11px;font-weight:500;">Cebu</span><span class="fs-11" style="color:var(--text-secondary);">16% <span class="muted">· 300 of 1,820</span></span></div><div class="hbar-track"><div class="hbar-fill" style="width:16%;background:#B58A2D;"></div></div></div>
+        </div>
+      </div>
+      <!-- row 3 -->
+      <div class="grid-2 mb-12">
+        <div class="card">
+          <div class="flex-between mb-12"><div class="card-header" style="margin:0;">Top Recommended Tools</div><span style="font-size:10px;color:var(--text-tertiary);">All projects</span></div>
+          <div class="fs-11">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:100px;color:var(--text-secondary);">Copilot Studio</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:100%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">142</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:100px;color:var(--text-secondary);">Power BI</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:73%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">103</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:100px;color:var(--text-secondary);">Power Automate</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:62%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">88</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:100px;color:var(--text-secondary);">Azure ML</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:48%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">68</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:100px;color:var(--text-secondary);">Power Apps</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:40%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">57</span></div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="width:100px;color:var(--text-secondary);">M365 Copilot</span><div class="hbar-track" style="flex:1;height:8px;"><div class="hbar-fill" style="width:30%;background:var(--indigo);"></div></div><span style="font-weight:500;width:30px;text-align:right;">42</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="flex-between mb-12"><div class="card-header" style="margin:0;">Top Contributors</div><span style="font-size:10px;color:var(--text-tertiary);">By AI project count</span></div>
+          <div style="font-size:11px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border);"><div style="width:18px;text-align:center;font-weight:500;color:#BA7517;">1</div><div class="avatar" style="width:24px;height:24px;background:#E6F1FB;color:#185FA5;font-size:9px;">DR</div><div style="flex:1;"><div style="font-weight:500;">Daniel Reyes</div><div style="font-size:10px;color:var(--text-tertiary);">PROGs</div></div><div style="font-weight:500;">18</div></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border);"><div style="width:18px;text-align:center;font-weight:500;color:#888780;">2</div><div class="avatar" style="width:24px;height:24px;background:var(--bg-secondary);color:var(--text-secondary);font-size:9px;">SC</div><div style="flex:1;"><div style="font-weight:500;">Sophia Chen</div><div style="font-size:10px;color:var(--text-tertiary);">Engineering</div></div><div style="font-weight:500;">14</div></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border);"><div style="width:18px;text-align:center;font-weight:500;color:#B07D4A;">3</div><div class="avatar" style="width:24px;height:24px;background:#FBEDD8;color:#BA7517;font-size:9px;">MO</div><div style="flex:1;"><div style="font-weight:500;">Marcus Okafor</div><div style="font-size:10px;color:var(--text-tertiary);">PROGs</div></div><div style="font-weight:500;">11</div></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid var(--border);"><div style="width:18px;text-align:center;font-weight:500;color:var(--text-tertiary);">4</div><div class="avatar" style="width:24px;height:24px;background:#F4E8F3;color:#6B4181;font-size:9px;">AT</div><div style="flex:1;"><div style="font-weight:500;">Aiko Tanaka</div><div style="font-size:10px;color:var(--text-tertiary);">Engineering</div></div><div style="font-weight:500;">9</div></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;"><div style="width:18px;text-align:center;font-weight:500;color:var(--text-tertiary);">5</div><div class="avatar" style="width:24px;height:24px;background:#D5EBE0;color:#0F6E56;font-size:9px;">LP</div><div style="flex:1;"><div style="font-weight:500;">Liam Park</div><div style="font-size:10px;color:var(--text-tertiary);">Field</div></div><div style="font-weight:500;">7</div></div>
+          </div>
+        </div>
+      </div>
+      <!-- recent activity -->
+      <div class="card">
+        <div class="flex-between mb-10"><div class="card-header" style="margin:0;">Recent Activity</div><span style="font-size:10px;color:var(--text-tertiary);">Last 5 transitions</span></div>
+        <div class="activity-row"><div class="activity-av" style="background:#E6F1FB;color:#185FA5;">DR</div><div><div class="activity-text"><strong>Daniel R.</strong> moved <span class="activity-link">Repair Time Prediction</span> to Deployment</div><div class="activity-meta">2 hours ago · PROGs</div></div></div>
+        <div class="activity-row"><div class="activity-av" style="background:#EAF3DE;color:#3B6D11;">EG</div><div><div class="activity-text"><strong>Evan G.</strong> validated benefits on <span class="activity-link">UAT Report Generator</span></div><div class="activity-meta">Yesterday · Sponsor</div></div></div>
+        <div class="activity-row"><div class="activity-av" style="background:var(--indigo-light);color:var(--indigo-dark);">JG</div><div><div class="activity-text"><strong>John G.</strong> qualified <span class="activity-link">Sentiment Dashboard</span></div><div class="activity-meta">2 days ago · Governance Lead</div></div></div>
+        <div class="activity-row"><div class="activity-av" style="background:var(--red-light);color:var(--red);">JB</div><div><div class="activity-text"><strong>Jessica B.</strong> flagged risk on <span class="activity-link">Tester Log Anomaly</span></div><div class="activity-meta">3 days ago · Risk &amp; Compliance</div></div></div>
+        <div class="activity-row"><div class="activity-av" style="background:var(--bg-secondary);color:var(--text-secondary);">SC</div><div><div class="activity-text"><strong>Sophia C.</strong> submitted <span class="activity-link">Knowledge Base QA Agent</span></div><div class="activity-meta">3 days ago · Engineering</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-SUBMISSION-WIZARD
+══════════════════════════════════════════ -->
+<div id="tab-wizard" class="tab-content">
+<div class="screen">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="logo">GCS</div><div class="name">AI Project Portal</div></div>
+    <button class="nav-item"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="nav-item active"><i class="ti ti-circle-plus"></i>Submit Project</button>
+    <button class="nav-item"><i class="ti ti-folders"></i>Projects</button>
+    <button class="nav-item"><i class="ti ti-school"></i>Training Catalog</button>
+    <button class="nav-item"><i class="ti ti-settings"></i>Admin</button>
+    <div class="sidebar-footer"><i class="ti ti-info-circle"></i>Demo Mode · Phase 0</div>
+  </aside>
+  <div class="main">
+    <div class="demo-banner"><i class="ti ti-alert-triangle"></i>DEMO MODE — Phase 0.</div>
+    <div class="topbar"><span class="topbar-title">Submit New Project</span><div class="topbar-right"><i class="ti ti-bell" style="font-size:16px;color:var(--text-secondary);"></i><div class="avatar" style="background:var(--bg-secondary);color:var(--text-secondary);">MS</div></div></div>
+    <div class="page-content">
+      <div class="mb-6"><button class="btn btn-ghost btn-sm" style="padding:0;border:none;"><i class="ti ti-arrow-left"></i> Back to Dashboard</button></div>
+      <div class="mb-20"><div class="page-title">Submit New AI Project</div><div class="page-subtitle">Complete all 4 steps to submit your AI initiative for review and tool recommendations.</div></div>
+      <!-- stepper -->
+      <div class="card mb-20" style="padding:16px 20px;">
+        <div class="stepper" id="wizard-stepper">
+          <!-- injected by JS -->
+        </div>
+      </div>
+      <!-- two col -->
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;">
+        <!-- form card -->
+        <div class="card" style="padding:20px;" id="wizard-form">
+          <!-- injected by JS -->
+        </div>
+        <!-- right sidebar -->
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <!-- checklist -->
+          <div class="card">
+            <div style="font-size:11px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="ti ti-list-check" style="font-size:14px;color:var(--indigo);"></i>Progress Checklist</div>
+            <div id="wizard-checklist"><!-- injected --></div>
+          </div>
+          <!-- tips -->
+          <div class="card">
+            <div style="font-size:11px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="ti ti-bulb" style="font-size:14px;color:#BA7517;"></i>Tips for a better recommendation</div>
+            <div style="font-size:11px;color:var(--text-secondary);line-height:1.6;">
+              <div style="display:flex;gap:6px;margin-bottom:6px;"><span style="color:var(--indigo);">→</span><span>Be specific about the problem you're solving, not just the solution you want.</span></div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;"><span style="color:var(--indigo);">→</span><span>Mention the data format (Excel, SharePoint, SQL, etc.).</span></div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;"><span style="color:var(--indigo);">→</span><span>Include tools your team already uses.</span></div>
+              <div style="display:flex;gap:6px;"><span style="color:var(--indigo);">→</span><span>Estimate hours saved per month.</span></div>
+            </div>
+          </div>
+          <!-- what happens -->
+          <div style="background:var(--indigo-light);border:0.5px solid var(--indigo-mid);border-radius:var(--radius-lg);padding:14px;">
+            <div style="font-size:11px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px;color:#26215C;"><i class="ti ti-info-circle"></i>What happens after you submit?</div>
+            <div style="font-size:11px;color:#3C3489;line-height:1.6;">
+              <div style="display:flex;gap:6px;margin-bottom:5px;align-items:flex-start;"><span style="background:var(--indigo);color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">1</span><span>You'll see your top 3 tool recommendations instantly.</span></div>
+              <div style="display:flex;gap:6px;margin-bottom:5px;align-items:flex-start;"><span style="background:var(--indigo);color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">2</span><span>Your project goes to the Governance Lead for qualification.</span></div>
+              <div style="display:flex;gap:6px;align-items:flex-start;"><span style="background:var(--indigo);color:white;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">3</span><span>You'll be notified when approved to proceed.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-RECOMMENDATIONS
+══════════════════════════════════════════ -->
+<div id="tab-recs" class="tab-content">
+<div class="screen">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="logo">GCS</div><div class="name">AI Project Portal</div></div>
+    <button class="nav-item"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="nav-item active"><i class="ti ti-circle-plus"></i>Submit Project</button>
+    <button class="nav-item"><i class="ti ti-folders"></i>Projects</button>
+    <button class="nav-item"><i class="ti ti-school"></i>Training Catalog</button>
+    <button class="nav-item"><i class="ti ti-settings"></i>Admin</button>
+    <div class="sidebar-footer"><i class="ti ti-info-circle"></i>Demo Mode · Phase 0</div>
+  </aside>
+  <div class="main">
+    <div class="demo-banner"><i class="ti ti-alert-triangle"></i>DEMO MODE — Phase 0.</div>
+    <div class="topbar"><span class="topbar-title">Tool Recommendations</span><div class="topbar-right"><i class="ti ti-bell" style="font-size:16px;color:var(--text-secondary);"></i><div class="avatar" style="background:var(--bg-secondary);">MS</div></div></div>
+    <div class="page-content">
+      <div class="mb-6"><button class="btn btn-ghost btn-sm" style="padding:0;border:none;"><i class="ti ti-arrow-left"></i> Back to submission</button></div>
+      <div class="flex-between mb-16">
+        <div><div class="page-title">Tool Recommendations</div><div class="page-subtitle">Based on your submission for <strong>Service Ticket Triage Copilot</strong></div></div>
+        <div style="display:flex;gap:8px;align-items:center;"><span class="badge badge-green"><i class="ti ti-circle-check"></i>Submitted for review</span><button class="btn btn-primary btn-sm">Continue to Project <i class="ti ti-arrow-right"></i></button></div>
+      </div>
+      <!-- summary bar -->
+      <div class="card flex-between mb-16" style="padding:12px 16px;">
+        <div style="display:flex;gap:24px;font-size:11px;"><div><span class="muted">Use case: </span><span class="fw5">Conversational Q&A agent</span></div><div><span class="muted">Sensitivity: </span><span class="fw5">Internal</span></div><div><span class="muted">Skill: </span><span class="fw5">Intermediate</span></div><div><span class="muted">Est. benefit: </span><span class="fw5">~40 hrs/month</span></div></div>
+        <button class="btn btn-ghost btn-sm">View full submission <i class="ti ti-chevron-down"></i></button>
+      </div>
+      <!-- combos -->
+      <div class="mb-20">
+        <div style="font-size:12px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="ti ti-stack-2" style="font-size:16px;color:var(--indigo);"></i>Recommended Tool Combos<span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">— pre-built stacks that work well together</span></div>
+        <div class="grid-3" id="rec-combos"><!-- injected --></div>
+      </div>
+      <!-- selected stack bar -->
+      <div style="background:var(--indigo-light);border:1.5px solid var(--indigo-mid);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:500;color:#26215C;margin-bottom:6px;display:flex;align-items:center;gap:5px;"><i class="ti ti-layers-subtract" style="font-size:14px;"></i>Your selected tool stack</div>
+          <div class="tool-chips">
+            <div class="tool-chip-primary"><i class="ti ti-message-chatbot" style="font-size:11px;"></i>Copilot Studio</div>
+            <span class="chip-sep" style="color:var(--indigo);">+</span>
+            <div class="tool-chip-addon">SharePoint</div>
+            <span class="chip-sep" style="color:var(--indigo);">+</span>
+            <div class="tool-chip-addon">Power Automate</div>
+          </div>
+        </div>
+        <div style="margin-left:auto;font-size:11px;color:#3C3489;">You can update your stack any time from the project detail page.</div>
+        <button class="btn btn-ghost btn-sm" style="border-color:#CECBF6;color:#3C3489;white-space:nowrap;" onclick="showTab('dialog')">Customise stack</button>
+      </div>
+      <!-- individual rankings -->
+      <div class="mb-20">
+        <div style="font-size:12px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="ti ti-sparkles" style="font-size:16px;color:var(--indigo);"></i>Individual Tool Rankings<span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">— toggle add-ons to customise your stack</span></div>
+        <div class="grid-3 mb-14" id="rec-tools"><!-- injected --></div>
+        <!-- alternatives -->
+        <div style="font-size:11px;font-weight:500;color:var(--text-secondary);margin-bottom:8px;display:flex;align-items:center;gap:6px;"><i class="ti ti-adjustments-horizontal" style="font-size:14px;"></i>Alternatives — toggle to add to your stack</div>
+        <div class="grid-2" id="rec-alts"><!-- injected --></div>
+      </div>
+      <!-- footer -->
+      <div class="card flex-between"><div style="font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;"><i class="ti ti-shield-check" style="color:var(--indigo);"></i>Your stack is saved automatically. You can update it any time from the project detail page.</div><button class="btn btn-primary btn-sm" style="margin-left:16px;">Continue to Project <i class="ti ti-arrow-right"></i></button></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-CUSTOMISE-STACK
+══════════════════════════════════════════ -->
+<div id="tab-dialog" class="tab-content">
+<div style="min-height:calc(100vh - 48px);background:rgba(26,25,24,0.7);display:flex;align-items:center;justify-content:center;padding:24px;">
+  <div class="dialog-box">
+    <div class="dialog-header">
+      <div><div style="font-size:14px;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:8px;"><i class="ti ti-layers-subtract" style="color:var(--indigo);"></i>Customise Tool Stack</div><div style="font-size:11px;color:var(--text-tertiary);">Service Ticket Triage Copilot — select one primary tool and any number of add-ons</div></div>
+      <button onclick="showTab('recs')" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:20px;line-height:1;padding:4px;">×</button>
+    </div>
+    <div class="dialog-body">
+      <!-- catalog -->
+      <div class="dialog-catalog">
+        <div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:1;border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:6px;"><i class="ti ti-search" style="font-size:13px;"></i>Search tools…</div><div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;cursor:pointer;">All categories <i class="ti ti-chevron-down" style="font-size:13px;"></i></div></div>
+        <div id="dialog-catalog-content"><!-- injected --></div>
+      </div>
+      <!-- stack summary -->
+      <div class="dialog-stack">
+        <div style="font-size:11px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><i class="ti ti-stack-2" style="font-size:14px;color:var(--indigo);"></i>Current Stack<span style="margin-left:auto;background:var(--indigo);color:white;font-size:10px;font-weight:600;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;">3</span></div>
+        <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Primary</div>
+        <div style="background:var(--bg-primary);border:1.5px solid var(--indigo);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <div class="tool-icon-tile" style="background:var(--indigo);"><i class="ti ti-message-chatbot" style="color:white;font-size:14px;"></i></div>
+          <div style="flex:1;"><div style="font-size:11px;font-weight:600;">Copilot Studio</div><div style="font-size:10px;color:var(--text-tertiary);">Conversational AI</div></div>
+          <span style="font-size:9px;background:var(--indigo-light);color:var(--indigo-dark);padding:2px 6px;border-radius:4px;">PRIMARY</span>
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Add-ons</div>
+        <div id="dialog-addons"><!-- injected --></div>
+        <div class="hint-box" style="margin-bottom:12px;">
+          <div class="hint-title"><i class="ti ti-info-circle" style="color:var(--indigo);"></i>How to choose</div>
+          <div class="hint-line">→ <strong>Primary</strong> — the core tool driving the solution.</div>
+          <div class="hint-line">→ <strong>Add-on</strong> — supporting tools that extend or feed the primary.</div>
+        </div>
+        <div style="margin-top:auto;">
+          <div style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Trainings for this stack</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="background:var(--bg-primary);border-radius:var(--radius);padding:6px 8px;font-size:10px;display:flex;justify-content:space-between;align-items:center;">Build a Copilot Studio Agent<i class="ti ti-external-link" style="font-size:11px;color:var(--indigo);"></i></div>
+            <div style="background:var(--bg-primary);border-radius:var(--radius);padding:6px 8px;font-size:10px;display:flex;justify-content:space-between;align-items:center;">SharePoint for AI Builders<i class="ti ti-external-link" style="font-size:11px;color:var(--indigo);"></i></div>
+            <div style="background:var(--bg-primary);border-radius:var(--radius);padding:6px 8px;font-size:10px;display:flex;justify-content:space-between;align-items:center;">Power Automate Fundamentals<i class="ti ti-external-link" style="font-size:11px;color:var(--indigo);"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dialog-footer">
+      <button class="btn btn-ghost btn-sm" onclick="showTab('recs')">Cancel</button>
+      <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:11px;color:var(--text-tertiary);">3 tools selected</span><button class="btn btn-primary btn-sm"><i class="ti ti-circle-check"></i>Save Stack</button></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-PROJECT-DETAIL
+══════════════════════════════════════════ -->
+<div id="tab-detail" class="tab-content">
+<div class="screen">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="logo">GCS</div><div class="name">AI Project Portal</div></div>
+    <button class="nav-item"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="nav-item"><i class="ti ti-circle-plus"></i>Submit Project</button>
+    <button class="nav-item active"><i class="ti ti-folders"></i>Projects</button>
+    <button class="nav-item"><i class="ti ti-school"></i>Training Catalog</button>
+    <button class="nav-item"><i class="ti ti-settings"></i>Admin</button>
+    <div class="sidebar-footer"><i class="ti ti-info-circle"></i>Demo Mode · Phase 0</div>
+  </aside>
+  <div class="main">
+    <div class="demo-banner"><i class="ti ti-alert-triangle"></i>DEMO MODE — Phase 0.</div>
+    <div class="topbar"><span class="topbar-title">Project Detail</span><div class="topbar-right"><i class="ti ti-bell" style="font-size:16px;color:var(--text-secondary);"></i><div class="avatar" style="background:var(--indigo-light);color:var(--indigo-dark);">JG</div></div></div>
+    <div class="page-content">
+      <div class="mb-8"><button class="btn btn-ghost btn-sm" style="padding:0;border:none;"><i class="ti ti-arrow-left"></i> Back to Projects</button></div>
+      <!-- project header card -->
+      <div class="project-header-card mb-14">
+        <div class="flex-between mb-10">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span class="proj-title">Service Ticket Triage Copilot</span><span class="badge badge-amber">IN PROGRESS</span><span class="badge badge-indigo">DEPLOYMENT</span></div>
+            <div class="proj-meta"><span><i class="ti ti-user"></i>Maria Santos</span><span><i class="ti ti-briefcase"></i>Evan Gonzalez</span><span><i class="ti ti-building"></i>PROGs · Cebu</span><span><i class="ti ti-calendar"></i>Jun 3, 2026</span><span><i class="ti ti-hash"></i>prj-042</span></div>
+          </div>
+          <div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm"><i class="ti ti-edit"></i>Edit</button><button class="btn btn-primary btn-sm" onclick="showTab('dialog')"><i class="ti ti-layers-subtract"></i>Customise Stack</button></div>
+        </div>
+        <div class="tool-chips mb-12">
+          <span style="font-size:10px;color:var(--text-tertiary);">Tool stack:</span>
+          <div class="tool-chip-primary"><i class="ti ti-message-chatbot" style="font-size:11px;"></i>Copilot Studio</div>
+          <span class="chip-sep">+</span>
+          <div class="tool-chip-addon">SharePoint</div>
+          <span class="chip-sep">+</span>
+          <div class="tool-chip-addon">Power Automate</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:10px;color:var(--text-tertiary);">Overall progress</span><span style="font-size:10px;font-weight:500;color:var(--text-secondary);">5 of 8 stages complete · 63%</span></div>
+        <div class="progress-bar"><div class="progress-fill progress-fill-indigo" style="width:63%;"></div></div>
+      </div>
+      <!-- lifecycle card -->
+      <div class="card mb-14" style="padding:16px 20px;">
+        <div class="flex-between mb-14">
+          <div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;"><i class="ti ti-route" style="color:var(--indigo);"></i>Lifecycle Stages</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text-tertiary);">
+            <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;"></span>Completed</span>
+            <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber-dark);display:inline-block;"></span>In Progress</span>
+            <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:#D3D1C7;display:inline-block;"></span>Not Started</span>
+            <span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:#C53030;display:inline-block;"></span>Blocked</span>
+          </div>
+        </div>
+        <!-- stepper -->
+        <div style="display:flex;align-items:flex-start;" id="detail-stepper"><!-- injected --></div>
+        <!-- enablement chip -->
+        <div style="margin-top:10px;display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:0.5px;background:var(--border);"></div>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--bg-secondary);border:0.5px solid var(--border);border-radius:var(--radius);padding:4px 10px;font-size:10px;color:var(--text-secondary);"><i class="ti ti-star" style="color:#BA7517;"></i>Enablement (cross-cutting) — active throughout all stages</div>
+          <div style="flex:1;height:0.5px;background:var(--border);"></div>
+        </div>
+      </div>
+      <!-- tabs card -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="tab-bar">
+          <button class="inner-tab active" onclick="switchInnerTab(this,'ov')">Overview</button>
+          <button class="inner-tab" onclick="switchInnerTab(this,'lc')">Lifecycle</button>
+          <button class="inner-tab" onclick="switchInnerTab(this,'rc')">Recommendations</button>
+          <button class="inner-tab" onclick="switchInnerTab(this,'bc')">Benefits &amp; Closure</button>
+          <button class="inner-tab" onclick="switchInnerTab(this,'al')">Audit Log <span style="background:var(--indigo-light);color:var(--indigo-dark);font-size:9px;font-weight:600;padding:1px 5px;border-radius:10px;margin-left:4px;">8</span></button>
+        </div>
+        <!-- overview tab -->
+        <div id="inner-ov" style="display:grid;grid-template-columns:1fr 300px;">
+          <div style="padding:16px;border-right:0.5px solid var(--border);">
+            <!-- basics -->
+            <div class="mb-14">
+              <div style="font-size:11px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer;"><i class="ti ti-chevron-down" style="font-size:13px;color:var(--indigo);"></i>Basics</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;">
+                <div><span class="muted">Group: </span>PROGs</div><div><span class="muted">Site: </span>Cebu</div>
+                <div><span class="muted">Department: </span>Customer Service Ops</div><div><span class="muted">Target users: </span>Field engineers</div>
+                <div><span class="muted">Est. users: </span>120</div><div><span class="muted">Est. benefit: </span>40 hrs/month</div>
+              </div>
+            </div>
+            <hr class="sep">
+            <!-- use case -->
+            <div class="mb-14">
+              <div style="font-size:11px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer;"><i class="ti ti-chevron-down" style="font-size:13px;color:var(--indigo);"></i>Use Case</div>
+              <div style="font-size:11px;color:var(--text-secondary);line-height:1.6;">
+                <div class="mb-6"><span class="muted">Problem: </span>Field engineers spend 30–40% of their time manually triaging and routing service tickets.</div>
+                <div class="mb-6"><span class="muted">Goal: </span>Deploy a conversational AI agent that classifies tickets, retrieves KB articles, and routes to the right team.</div>
+                <div><span class="muted">Expected outcome: </span>Reduce triage time by 60%, improve first-contact resolution from 42% to 70%.</div>
+              </div>
+            </div>
+            <hr class="sep">
+            <!-- data readiness collapsed -->
+            <div class="mb-14">
+              <div style="font-size:11px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;cursor:pointer;"><i class="ti ti-chevron-right" style="font-size:13px;color:var(--text-tertiary);"></i>Data &amp; Technical Readiness <span style="font-size:10px;color:var(--text-tertiary);font-weight:400;margin-left:4px;">(collapsed)</span></div>
+            </div>
+            <hr class="sep">
+            <!-- current stage actions -->
+            <div>
+              <div style="font-size:11px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="ti ti-player-play-filled" style="font-size:13px;color:var(--amber-dark);"></i>Current Stage Actions — Deployment<span class="badge badge-amber" style="margin-left:2px;">In Progress</span></div>
+              <div style="background:var(--bg-secondary);border-radius:var(--radius);padding:12px;margin-bottom:10px;font-size:11px;">
+                <div class="flex-between mb-8"><span class="fw5">Primary owner</span><span class="badge badge-amber">AI Program Manager</span></div>
+                <div class="flex-between mb-8"><span class="fw5">Supporting roles</span><div style="display:flex;gap:4px;"><span class="role-badge" style="background:#E6F1FB;color:#185FA5;">Data Engineering</span><span class="role-badge" style="background:#F4E8F3;color:#6B4181;">Business Analyst</span></div></div>
+                <div style="background:var(--indigo-light);border:0.5px solid var(--indigo-mid);border-radius:var(--radius);padding:8px 10px;font-size:11px;color:#26215C;display:flex;align-items:center;gap:6px;"><i class="ti ti-info-circle" style="font-size:13px;"></i>You are viewing as Governance Lead. Only AI Program Manager and supporting roles can advance this stage.</div>
+              </div>
+              <div style="display:flex;gap:8px;"><button class="btn btn-ghost btn-sm" style="flex:1;opacity:0.5;cursor:not-allowed;" disabled>Mark Blocked</button><button class="btn btn-ghost btn-sm" style="flex:1;opacity:0.5;cursor:not-allowed;" disabled>Mark Complete</button></div>
+            </div>
+          </div>
+          <!-- right sidebar -->
+          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <div class="flex-between mb-8"><span style="font-size:11px;font-weight:600;">Recent Activity</span><span class="fs-10 text-link" style="cursor:pointer;">View all →</span></div>
+              <div class="activity-row" style="font-size:11px;"><div class="activity-av" style="background:var(--amber-light);color:var(--amber);width:20px;height:20px;font-size:8px;">RA</div><div><div class="activity-text">Randy A. started Deployment</div><div class="activity-meta">2 days ago · AI Program Manager</div></div></div>
+              <div class="activity-row" style="font-size:11px;"><div class="activity-av" style="background:#E6F1FB;color:#185FA5;width:20px;height:20px;font-size:8px;">NC</div><div><div class="activity-text">Nico C. completed Development</div><div class="activity-meta">4 days ago · Data Engineering</div></div></div>
+              <div class="activity-row" style="font-size:11px;"><div class="activity-av" style="background:var(--red-light);color:var(--red);width:20px;height:20px;font-size:8px;">JB</div><div><div class="activity-text">Jessica B. cleared Supplier risk</div><div class="activity-meta">6 days ago · Risk &amp; Compliance</div></div></div>
+              <div class="activity-row" style="font-size:11px;border-bottom:none;"><div class="activity-av" style="background:var(--indigo-light);color:var(--indigo-dark);width:20px;height:20px;font-size:8px;">JG</div><div><div class="activity-text">John G. qualified project</div><div class="activity-meta">2 weeks ago · Governance Lead</div></div></div>
+            </div>
+            <hr class="sep">
+            <div>
+              <div style="font-size:11px;font-weight:600;margin-bottom:8px;">Tool Stack</div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;gap:8px;background:var(--indigo-light);border-radius:var(--radius);padding:7px 10px;"><span style="background:var(--indigo);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;">PRIMARY</span><span style="font-size:11px;font-weight:500;color:#26215C;">Copilot Studio</span></div>
+                <div style="display:flex;align-items:center;gap:8px;background:var(--green-light);border-radius:var(--radius);padding:7px 10px;"><span style="background:var(--green);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;">ADD-ON</span><span style="font-size:11px;">SharePoint</span><span style="font-size:10px;color:var(--text-tertiary);margin-left:auto;">Knowledge store</span></div>
+                <div style="display:flex;align-items:center;gap:8px;background:var(--green-light);border-radius:var(--radius);padding:7px 10px;"><span style="background:var(--green);color:white;font-size:9px;font-weight:700;padding:1px 6px;border-radius:3px;">ADD-ON</span><span style="font-size:11px;">Power Automate</span><span style="font-size:10px;color:var(--text-tertiary);margin-left:auto;">Routing</span></div>
+              </div>
+            </div>
+            <hr class="sep">
+            <div>
+              <div class="flex-between mb-8"><span style="font-size:11px;font-weight:600;">Recommended Trainings</span><span class="fs-10 text-link">View catalog →</span></div>
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                <div style="background:var(--bg-secondary);border-radius:var(--radius);padding:7px 10px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:11px;">Build a Copilot Studio Agent</div><div style="font-size:10px;color:var(--text-tertiary);">Self-paced · 3h</div></div><i class="ti ti-external-link" style="font-size:12px;color:var(--indigo);"></i></div>
+                <div style="background:var(--bg-secondary);border-radius:var(--radius);padding:7px 10px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:11px;">Power Automate Fundamentals</div><div style="font-size:10px;color:var(--text-tertiary);">Video · 2h</div></div><i class="ti ti-external-link" style="font-size:12px;color:var(--indigo);"></i></div>
+                <div style="background:var(--bg-secondary);border-radius:var(--radius);padding:7px 10px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:11px;">SharePoint for AI Builders</div><div style="font-size:10px;color:var(--text-tertiary);">Self-paced · 1.5h</div></div><i class="ti ti-external-link" style="font-size:12px;color:var(--indigo);"></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- other tabs placeholder -->
+        <div id="inner-lc" style="display:none;padding:20px;"><p style="color:var(--text-tertiary);font-size:12px;">Lifecycle stage cards with gate actions would appear here — one card per stage with primary owner, supporting roles, and transition buttons.</p></div>
+        <div id="inner-rc" style="display:none;padding:20px;"><p style="color:var(--text-tertiary);font-size:12px;">Recommendation results (read-only) and Customise Stack button would appear here.</p></div>
+        <div id="inner-bc" style="display:none;padding:20px;"><p style="color:var(--text-tertiary);font-size:12px;">Benefit reporting form (for submitter) and sponsor validation (for sponsor) would appear here.</p></div>
+        <div id="inner-al" style="display:none;padding:20px;"><p style="color:var(--text-tertiary);font-size:12px;">Full audit log table — all StageTransition entries, newest first.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MOCKUP-TRAINING-CATALOG
+══════════════════════════════════════════ -->
+<div id="tab-catalog" class="tab-content">
+<div class="screen">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="logo">GCS</div><div class="name">AI Project Portal</div></div>
+    <button class="nav-item"><i class="ti ti-layout-dashboard"></i>Dashboard</button>
+    <button class="nav-item"><i class="ti ti-circle-plus"></i>Submit Project</button>
+    <button class="nav-item"><i class="ti ti-folders"></i>Projects</button>
+    <button class="nav-item active"><i class="ti ti-school"></i>Training Catalog</button>
+    <button class="nav-item"><i class="ti ti-settings"></i>Admin</button>
+    <div class="sidebar-footer"><i class="ti ti-info-circle"></i>Demo Mode · Phase 0</div>
+  </aside>
+  <div class="main">
+    <div class="demo-banner"><i class="ti ti-alert-triangle"></i>DEMO MODE — Phase 0.</div>
+    <div class="topbar"><span class="topbar-title">Training Catalog</span><div class="topbar-right"><i class="ti ti-bell" style="font-size:16px;color:var(--text-secondary);"></i><div class="avatar" style="background:var(--bg-secondary);">MS</div></div></div>
+    <div class="page-content">
+      <div class="flex-between mb-18"><div><div class="page-title">Training Catalog</div><div class="page-subtitle">Curated learning paths for GCS AI tools and skills — 42 trainings available</div></div><div style="font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:6px;"><i class="ti ti-refresh" style="font-size:14px;"></i>Last updated Jun 1, 2026</div></div>
+      <!-- rec strip -->
+      <div class="mb-20">
+        <div style="font-size:12px;font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="ti ti-sparkles" style="font-size:15px;color:#BA7517;"></i>Recommended for you<span style="font-size:10px;font-weight:400;color:var(--text-tertiary);">— based on your active projects</span></div>
+        <div class="rec-strip" id="rec-strip"><!-- injected --></div>
+      </div>
+      <!-- filter bar -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <div style="flex:1;min-width:180px;border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:11px;color:var(--text-tertiary);display:flex;align-items:center;gap:6px;background:var(--bg-primary);"><i class="ti ti-search" style="font-size:13px;"></i>Search trainings…</div>
+        <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;background:var(--bg-primary);cursor:pointer;">All tools <i class="ti ti-chevron-down"></i></div>
+        <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;background:var(--bg-primary);cursor:pointer;">All formats <i class="ti ti-chevron-down"></i></div>
+        <div style="border:0.5px solid var(--indigo);background:var(--indigo-light);border-radius:var(--radius);padding:7px 12px;font-size:11px;color:var(--indigo-dark);display:flex;align-items:center;gap:5px;cursor:pointer;">Intermediate <i class="ti ti-x" style="font-size:12px;"></i></div>
+        <div style="border:0.5px solid var(--border);border-radius:var(--radius);padding:7px 12px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:5px;background:var(--bg-primary);cursor:pointer;"><i class="ti ti-filter" style="font-size:13px;"></i>More filters</div>
+        <div style="margin-left:auto;font-size:11px;color:var(--text-tertiary);">Showing 18 of 42</div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">All Trainings</div>
+      <div class="grid-3 mb-20" id="catalog-grid"><!-- injected --></div>
+      <!-- pagination -->
+      <div style="display:flex;justify-content:center;align-items:center;gap:8px;">
+        <button class="btn btn-ghost btn-sm" style="opacity:0.5;" disabled>← Prev</button>
+        <button class="btn btn-primary btn-sm" style="width:28px;height:28px;padding:0;justify-content:center;">1</button>
+        <button class="btn btn-ghost btn-sm" style="width:28px;height:28px;padding:0;justify-content:center;">2</button>
+        <button class="btn btn-ghost btn-sm" style="width:28px;height:28px;padding:0;justify-content:center;">3</button>
+        <span style="color:var(--text-tertiary);font-size:11px;">…</span>
+        <button class="btn btn-ghost btn-sm" style="width:28px;height:28px;padding:0;justify-content:center;">5</button>
+        <button class="btn btn-ghost btn-sm">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<style>
+  .bar-hover { transition: opacity 0.15s; cursor: pointer; }
+  .bar-hover:hover { opacity: 0.75; }
+  .tool-row-d:hover .check-circle-empty { border-color: var(--indigo); }
+</style>
+
+<script>
+// ── TAB NAVIGATION ──
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  const btns = document.querySelectorAll('.tab-btn');
+  const map = {login:0,dashboard:1,wizard:2,recs:3,dialog:4,detail:5,catalog:6};
+  if(map[id]!==undefined) btns[map[id]].classList.add('active');
+}
+
+function switchInnerTab(btn, id) {
+  btn.closest('.card').querySelectorAll('.inner-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['ov','lc','rc','bc','al'].forEach(t => {
+    const el = document.getElementById('inner-'+t);
+    if(el) el.style.display = t===id ? (t==='ov'?'grid':'block') : 'none';
+  });
+}
+
+// ── LOGIN ROLES ──
+const roles = [
+  {role:'Submitter',name:'Maria Santos',desc:'Submit AI ideas and track progress',icon:'ti-clipboard-list',color:'#534AB7'},
+  {role:'Business Analyst',name:'Chris Aguillon',desc:'Refine requirements and reviews',icon:'ti-file-search',color:'#534AB7'},
+  {role:'Governance Lead',name:'John Gicale',desc:'Approve qualification and gates',icon:'ti-shield-check',color:'#3C3489',active:true},
+  {role:'Risk & Compliance',name:'Jessica Buhay',desc:'Risk assessment and sign-off',icon:'ti-alert-triangle',color:'#A32D2D'},
+  {role:'Data Engineering',name:'Nico Cabangal',desc:'Data prep and model development',icon:'ti-database',color:'#185FA5'},
+  {role:'AI Program Manager',name:'Randy Asignar',desc:'Coordinate deployment and release',icon:'ti-chart-bar',color:'#BA7517'},
+  {role:'Maintenance',name:'Nikki Aberion',desc:'Operate solutions post-deployment',icon:'ti-tool',color:'#0F6E56'},
+  {role:'Sponsor',name:'Evan Gonzalez',desc:'Validate benefits at closure',icon:'ti-briefcase',color:'#3B6D11'},
+  {role:'Admin',name:'Albert Arimbay',desc:'Manage catalogs and demo data',icon:'ti-settings',color:'#444441'},
+];
+const grid = document.getElementById('role-grid');
+roles.forEach(r => {
+  const sel = r.active;
+  const card = document.createElement('div');
+  card.style.cssText = `border:${sel?'2px solid #534AB7':'0.5px solid #E2E0D8'};border-radius:6px;padding:14px;background:${sel?'#EEEDFE':'#fff'};cursor:pointer;transition:border-color 0.15s,background 0.15s,transform 0.1s;`;
+  card.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><i class="ti ${r.icon}" style="font-size:18px;color:${r.color};"></i><span style="font-size:13px;font-weight:500;${sel?'color:#26215C;':''}">${r.role}</span></div><p style="font-size:12px;color:${sel?'#26215C':'#1A1918'};margin:0 0 4px;">${r.name}</p><p style="font-size:11px;color:${sel?'#3C3489':'#888780'};margin:0;line-height:1.4;">${r.desc}</p>`;
+  card.addEventListener('mouseenter', () => { if(!sel){card.style.borderColor='#534AB7';card.style.background='#F8F7FF';card.style.transform='translateY(-1px)';} });
+  card.addEventListener('mouseleave', () => { if(!sel){card.style.borderColor='#E2E0D8';card.style.background='#fff';card.style.transform='none';} });
+  grid.appendChild(card);
+});
+
+// ── WIZARD STATE ──
+let wizardStep = 1;
+const steps = [{label:'Basics',sub:'Title, group, site'},{label:'Use Case',sub:'Problem, goal, outcome'},{label:'Data',sub:'Sources, sensitivity'},{label:'Readiness',sub:'Skills, tools, integrations'}];
+const checkItems = ['Project title','Group & site','Department','Target users','Use case description','Data sources','Technical readiness'];
+const checkedCount = [4,4,4,4,0,0,0];
+
+function renderWizard() {
+  // stepper
+  const s = document.getElementById('wizard-stepper');
+  s.innerHTML = '';
+  steps.forEach((st, i) => {
+    const n = i+1;
+    const done = n < wizardStep;
+    const active = n === wizardStep;
+    const div = document.createElement('div');
+    div.className = 'step';
+    div.style.flex = '1';
+    let circleClass = done ? 'step-circle-done' : active ? 'step-circle-active' : 'step-circle-todo';
+    let circleContent = done ? '<i class="ti ti-check" style="font-size:13px;color:white;"></i>' : `<span>${n}</span>`;
+    let labelColor = done||active ? 'var(--indigo)' : 'var(--text-tertiary)';
+    let statusColor = done||active ? 'var(--text-tertiary)' : 'var(--text-tertiary)';
+    let lineLeftColor = n > 1 ? (n-1 < wizardStep ? 'var(--indigo)':'var(--border)') : 'transparent';
+    let lineRightColor = n < 4 ? (n < wizardStep ? 'var(--indigo)':'var(--border)') : 'transparent';
+    div.innerHTML = `<div class="step-connector-row"><div class="step-line" style="background:${lineLeftColor};"></div><div class="step-circle ${circleClass}" style="${active?'width:32px;height:32px;':''}box-sizing:border-box;">${circleContent}</div><div class="step-line" style="background:${lineRightColor};"></div></div><div class="step-label" style="color:${labelColor};">${st.label}</div><div class="step-status" style="color:${statusColor};font-size:9px;">${st.sub}</div>`;
+    s.appendChild(div);
+  });
+  // form
+  const f = document.getElementById('wizard-form');
+  const isLast = wizardStep === 4;
+  let formContent = '';
+  if(wizardStep === 1) {
+    formContent = `<div style="font-size:13px;font-weight:500;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--indigo);color:white;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">1</div>Basics</div>
+    <div class="form-field"><label class="form-label">Project Title <span class="required">*</span></label><div class="form-input">Service Ticket Triage Copilot</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div><label class="form-label">Group <span class="required">*</span></label><div class="form-input-plain">PROGs<i class="ti ti-chevron-down" style="font-size:14px;color:var(--text-tertiary);"></i></div></div>
+      <div><label class="form-label">Site <span class="required">*</span></label><div class="form-input-plain">Cebu<i class="ti ti-chevron-down" style="font-size:14px;color:var(--text-tertiary);"></i></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div><label class="form-label">Department <span class="required">*</span></label><div class="form-input-plain" style="border-color:var(--border);">Customer Service Operations</div></div>
+      <div><label class="form-label">Target Users <span class="required">*</span></label><div class="form-input-plain" style="border-color:var(--border);">Field service engineers</div></div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px;">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--indigo-light);color:var(--indigo);font-size:11px;font-weight:600;border:2px solid var(--indigo);display:flex;align-items:center;justify-content:center;box-sizing:border-box;">2</div>
+        Use Case <span style="margin-left:auto;font-size:10px;color:var(--text-tertiary);font-weight:400;">Step 2 of 4 — fills after advancing</span>
+      </div>
+      <div class="locked-step"><i class="ti ti-lock" style="font-size:20px;color:var(--text-tertiary);display:block;margin-bottom:6px;"></i><p style="font-size:12px;color:var(--text-tertiary);margin:0;">Complete Step 1 to unlock</p></div>
+    </div>`;
+  } else {
+    formContent = `<div style="font-size:13px;font-weight:500;margin-bottom:14px;padding-bottom:10px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:8px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--indigo);color:white;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;">${wizardStep}</div>${steps[wizardStep-1].label}</div>
+    <div style="background:var(--bg-secondary);border-radius:var(--radius);padding:20px;text-align:center;color:var(--text-tertiary);font-size:12px;">Step ${wizardStep} form fields would appear here.</div>`;
+  }
+  f.innerHTML = formContent + `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:0.5px solid var(--border);margin-top:16px;"><button class="btn btn-ghost btn-sm" ${wizardStep===1?'disabled style="opacity:0.5;"':''} onclick="if(wizardStep>1){wizardStep--;renderWizard();}">← Back</button><div style="display:flex;gap:10px;"><button class="btn btn-ghost btn-sm">Save Draft</button><button class="btn btn-primary btn-sm" onclick="if(wizardStep<4){wizardStep++;renderWizard();}">${isLast?'Submit & See Recommendations':'Next: '+steps[wizardStep].label+' →'}</button></div></div>`;
+  // checklist
+  const cl = document.getElementById('wizard-checklist');
+  cl.innerHTML = checkItems.map((item, i) => {
+    const checked = i < checkedCount[wizardStep-1];
+    return `<div class="checklist-row"><i class="ti ${checked?'ti-circle-check-filled':'ti-circle'}" style="font-size:14px;color:${checked?'#1D9E75':'var(--text-tertiary)'};"></i><span style="color:${checked?'var(--text-primary)':'var(--text-tertiary)'};">${item}</span></div>`;
+  }).join('');
+}
+renderWizard();
+
+// ── RECOMMENDATIONS ──
+// combos
+const combos = [
+  {name:'Triage Agent Stack',sub:'Best fit · 94% match',sel:true,tools:[{name:'Copilot Studio',role:'PRIMARY',bg:'var(--indigo-light)',badge:'indigo'},{name:'SharePoint',role:'+ ADD-ON',note:'Knowledge store'},{name:'Power Automate',role:'+ ADD-ON',note:'Routing & alerts'}],desc:'The most complete triage solution. Copilot Studio handles conversations, SharePoint stores KB articles, Power Automate routes escalations.'},
+  {name:'Lightweight Automation',sub:'Lower complexity · 71% match',sel:false,tools:[{name:'Power Automate',role:'PRIMARY',bg:'var(--indigo-light)',badge:'indigo'},{name:'Power BI',role:'+ ADD-ON',note:'Triage metrics'}],desc:'Good for rule-based ticket routing and dashboarding. Simpler to deploy but less conversational.'},
+  {name:'AI-Powered Search',sub:'Advanced retrieval · 68% match',sel:false,tools:[{name:'Azure AI Search',role:'PRIMARY',bg:'var(--indigo-light)',badge:'indigo'},{name:'Azure AI Foundry',role:'+ ADD-ON',note:'LLM layer'},{name:'SharePoint',role:'+ ADD-ON',note:'Data source'}],desc:'Best for high-volume semantic search over large corpora.',risk:'Requires Advanced skill level'},
+];
+const combosEl = document.getElementById('rec-combos');
+combos.forEach(c => {
+  const d = document.createElement('div');
+  d.className = `combo-card ${c.sel?'combo-card-sel':'combo-card-plain'}`;
+  const badgeHtml = c.sel ? `<div style="position:absolute;top:-1px;left:12px;background:var(--indigo);color:white;font-size:10px;font-weight:600;padding:2px 10px;border-radius:0 0 6px 6px;display:flex;align-items:center;gap:4px;"><i class="ti ti-circle-check-filled" style="font-size:11px;"></i>Selected Stack</div>` : '';
+  const toolRows = c.tools.map(t => `<div class="combo-tool-row ${t.role==='PRIMARY'?'combo-primary-row':'combo-addon-row'}"><span style="background:${t.role==='PRIMARY'?'var(--indigo)':'var(--text-tertiary)'};color:white;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">${t.role}</span><span style="font-size:11px;font-weight:${t.role==='PRIMARY'?'500':'400'};color:${t.role==='PRIMARY'?'#26215C':'var(--text-primary)'};">${t.name}</span>${t.note?`<span style="font-size:10px;color:var(--text-tertiary);margin-left:auto;">${t.note}</span>`:''}</div>`).join('');
+  const riskHtml = c.risk ? `<div style="background:var(--orange-light);border:0.5px solid var(--orange-border);border-radius:var(--radius);padding:4px 8px;font-size:10px;color:var(--orange);margin-bottom:8px;display:flex;align-items:center;gap:4px;"><i class="ti ti-alert-triangle" style="font-size:11px;"></i>${c.risk}</div>` : '';
+  d.innerHTML = `${badgeHtml}<div style="${c.sel?'margin-top:12px;':''};margin-bottom:8px;"><div style="font-size:12px;font-weight:600;">${c.name}</div><div style="font-size:10px;color:var(--text-tertiary);">${c.sub}</div></div><div style="margin-bottom:10px;">${toolRows}</div><p style="font-size:11px;color:var(--text-secondary);line-height:1.5;margin-bottom:10px;">${c.desc}</p>${riskHtml}<button class="btn ${c.sel?'btn-primary':'btn-ghost'} btn-sm" style="width:100%;justify-content:center;">${c.sel?'<i class="ti ti-circle-check-filled"></i> Stack selected':'Select this stack'}</button>`;
+  combosEl.appendChild(d);
+});
+
+// individual tool rankings
+const tools = [
+  {rank:1,name:'Copilot Studio',cat:'Conversational AI · Microsoft',conf:92,rationale:'Strong fit for conversational Q&A and triage workflows. Integrates natively with Teams and SharePoint.',rules:['Use case "agent" → +30','Use case "Q&A" → +20','Teams integration → +5','Internal sensitivity ≤ tool max'],state:'primary'},
+  {rank:2,name:'SharePoint',cat:'Content Management · Microsoft',conf:74,rationale:'Acts as the knowledge store. Indexes ticket history and KB articles for Copilot Studio.',rules:['knowledge base → +30','search → +15','Not standalone for triage → −10'],state:'addon'},
+  {rank:3,name:'Power Automate',cat:'Automation · Microsoft',conf:68,rationale:'Handles routing, notifications and escalation flows triggered by Copilot Studio decisions.',rules:['automate → +30','workflow → +15','Existing tool in stack → +10'],state:'addon'},
+];
+const alts = [
+  {rank:4,name:'Azure AI Search',cat:'Search & Retrieval',conf:61,rationale:'Alternative to SharePoint for larger corpora. More powerful semantic search but requires more setup.'},
+  {rank:5,name:'M365 Copilot',cat:'AI Assistant',conf:48,rationale:'Good for summarising tickets in Teams. Lower customisation for routing logic.'},
+];
+const toolsEl = document.getElementById('rec-tools');
+tools.forEach(t => {
+  const isAddon = t.state==='addon';
+  const isPrimary = t.state==='primary';
+  const borderColor = isPrimary ? 'var(--indigo)' : isAddon ? '#1D9E75' : 'var(--border)';
+  const borderWidth = isPrimary ? '2px' : isAddon ? '1.5px' : '0.5px';
+  const badgeBg = isPrimary ? 'var(--indigo)' : '#1D9E75';
+  const badgeLabel = isPrimary ? '#1 Primary' : `#${t.rank} Add-on ✓`;
+  const confColor = isPrimary ? 'var(--indigo)' : isAddon ? '#1D9E75' : '#888780';
+  const confBg = isPrimary ? 'var(--indigo)' : isAddon ? '#1D9E75' : '#888780';
+  const confTrack = isPrimary ? 'var(--indigo-light)' : isAddon ? '#D5EBE0' : 'var(--bg-tertiary)';
+  const footerHtml = isPrimary
+    ? `<div style="background:var(--green-light);border:0.5px solid var(--green-border);border-radius:var(--radius);padding:6px 10px;font-size:11px;color:#0F6E56;display:flex;align-items:center;gap:5px;"><i class="ti ti-circle-check-filled" style="font-size:13px;"></i>Set as primary tool</div>`
+    : `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--green-light);border:0.5px solid var(--green-border);border-radius:var(--radius);padding:6px 10px;"><span style="font-size:11px;color:#0F6E56;font-weight:500;">Added to stack</span><button style="background:none;border:none;font-size:10px;color:var(--red);cursor:pointer;">Remove</button></div>`;
+  const d = document.createElement('div');
+  d.className = 'rec-card';
+  d.style.border = `${borderWidth} solid ${borderColor}`;
+  if(isPrimary) d.style.boxShadow = '0 2px 8px rgba(83,74,183,0.10)';
+  d.innerHTML = `<div class="rec-badge-top" style="background:${badgeBg};">${badgeLabel}</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;margin-top:8px;">
+    <div><div style="font-size:13px;font-weight:600;">${t.name}</div><div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">${t.cat}</div></div>
+    <div style="background:${isPrimary?'var(--indigo-light)':isAddon?'var(--green-light)':'var(--bg-secondary)'};color:${confColor};font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--radius);">${t.conf}%</div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-bottom:3px;"><span>Confidence</span><span style="font-weight:500;color:${confColor};">${t.conf}%</span></div>
+  <div style="height:4px;background:${confTrack};border-radius:3px;overflow:hidden;margin-bottom:8px;"><div style="width:${t.conf}%;height:100%;background:${confBg};"></div></div>
+  <p style="font-size:11px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px;">${t.rationale}</p>
+  <div style="font-size:10px;font-weight:500;color:var(--text-primary);margin-bottom:5px;display:flex;align-items:center;gap:5px;"><i class="ti ti-terminal-2" style="font-size:12px;color:var(--text-secondary);"></i>Rules fired</div>
+  <div class="rules-list">${t.rules.map(r => `<div style="display:flex;gap:5px;"><span class="${r.includes('−')?'rule-neg':'rule-ok'}">${r.includes('−')?'–':'✓'}</span>${r}</div>`).join('')}</div>
+  <div style="font-size:10px;font-weight:500;color:var(--text-primary);margin-bottom:5px;display:flex;align-items:center;gap:5px;"><i class="ti ti-school" style="font-size:12px;color:var(--text-secondary);"></i>Linked Trainings</div>
+  <div style="margin-bottom:12px;"><div class="training-chip">Build a Copilot Studio Agent in 60 Min<i class="ti ti-external-link" style="font-size:11px;color:var(--indigo);"></i></div></div>
+  ${footerHtml}`;
+  toolsEl.appendChild(d);
+});
+const altsEl = document.getElementById('rec-alts');
+alts.forEach(t => {
+  const d = document.createElement('div');
+  d.style.cssText = 'background:var(--bg-primary);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:12px;display:flex;gap:10px;';
+  d.innerHTML = `<div style="flex:1;min-width:0;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div><div style="font-size:12px;font-weight:600;">${t.name}</div><div style="font-size:10px;color:var(--text-tertiary);">${t.cat}</div></div><span style="font-size:10px;color:var(--text-tertiary);font-weight:500;">${t.conf}%</span></div>
+    <div style="height:3px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;margin-bottom:6px;"><div style="width:${t.conf}%;height:100%;background:#D3D1C7;"></div></div>
+    <p style="font-size:10px;color:var(--text-secondary);margin:0 0 8px;line-height:1.5;">${t.rationale}</p>
+    <button style="background:none;border:0.5px solid var(--border);color:var(--text-primary);padding:4px 12px;border-radius:var(--radius);font-size:10px;cursor:pointer;display:flex;align-items:center;gap:4px;"><i class="ti ti-plus" style="font-size:12px;"></i>Add to stack</button>
+  </div>`;
+  altsEl.appendChild(d);
+});
+
+// ── DIALOG CATALOG ──
+const dialogTools = [
+  {cat:'Conversational AI',items:[{name:'Copilot Studio',sub:'Conversational AI · Intermediate · Internal',icon:'ti-message-chatbot',iconBg:'var(--indigo)',iconColor:'white',state:'primary'},{name:'M365 Copilot',sub:'AI Assistant · Basic · Internal',icon:'ti-brand-office',iconBg:'#E6F1FB',iconColor:'#185FA5',state:'none'}]},
+  {cat:'Automation',items:[{name:'Power Automate',sub:'Automation · Intermediate · Internal',icon:'ti-arrows-shuffle',iconBg:'#D5EBE0',iconColor:'#0F6E56',state:'addon'},{name:'Azure Logic Apps',sub:'Automation · Advanced · Confidential',icon:'ti-sitemap',iconBg:'#F1EFE8',iconColor:'#888780',state:'none'}]},
+  {cat:'Content Management',items:[{name:'SharePoint',sub:'Content Management · Basic · Internal',icon:'ti-files',iconBg:'#D5EBE0',iconColor:'#0F6E56',state:'addon'}]},
+  {cat:'Analytics',items:[{name:'Power BI',sub:'Analytics · Basic · Internal',icon:'ti-chart-bar',iconBg:'#FEF3D0',iconColor:'#BA7517',state:'none'}]},
+  {cat:'ML Platform',items:[{name:'Azure ML',sub:'ML Platform · Advanced required · Confidential',icon:'ti-brain',iconBg:'#FEF3EC',iconColor:'#B85C1A',state:'skill-gap'}]},
+];
+const dc = document.getElementById('dialog-catalog-content');
+dialogTools.forEach(cat => {
+  const label = document.createElement('div');
+  label.style.cssText = 'font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;margin-top:6px;';
+  label.textContent = cat.cat;
+  dc.appendChild(label);
+  cat.items.forEach(tool => {
+    const row = document.createElement('div');
+    row.className = `tool-row-d ${tool.state==='primary'?'primary-sel':tool.state==='addon'?'addon-sel':tool.state==='skill-gap'?'skill-gap':''}`;
+    const checkHtml = tool.state==='primary' ? `<div class="check-circle check-circle-done-indigo"><i class="ti ti-check" style="font-size:11px;"></i></div>`
+      : tool.state==='addon' ? `<div class="check-circle check-circle-done-green"><i class="ti ti-check" style="font-size:11px;"></i></div>`
+      : `<div class="check-circle check-circle-empty"></div>`;
+    const primeBadge = tool.state==='primary' ? `<span style="background:var(--indigo);color:white;font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;">PRIMARY</span>` : '';
+    const addonBadge = tool.state==='addon' ? `<span style="background:var(--green);color:white;font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;">ADD-ON</span>` : '';
+    const skillBadge = tool.state==='skill-gap' ? `<span style="background:var(--orange-light);color:var(--orange);font-size:9px;padding:1px 6px;border-radius:4px;border:0.5px solid var(--orange-border);">Skill gap</span>` : '';
+    row.innerHTML = `<div class="tool-icon-tile" style="background:${tool.iconBg};"><i class="ti ${tool.icon}" style="font-size:16px;color:${tool.iconColor};"></i></div>
+    <div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;">${tool.name}${skillBadge}</div><div style="font-size:10px;color:var(--text-tertiary);">${tool.sub}</div></div>
+    <div style="display:flex;align-items:center;gap:6px;">${primeBadge}${addonBadge}${checkHtml}</div>`;
+    dc.appendChild(row);
+  });
+});
+
+// dialog addons
+const addonTools = [{name:'SharePoint',note:'Knowledge store',icon:'ti-files',iconBg:'#D5EBE0',iconColor:'#0F6E56'},{name:'Power Automate',note:'Routing & alerts',icon:'ti-arrows-shuffle',iconBg:'#D5EBE0',iconColor:'#0F6E56'}];
+const da = document.getElementById('dialog-addons');
+addonTools.forEach(t => {
+  const div = document.createElement('div');
+  div.style.cssText = 'background:var(--bg-primary);border:1px solid var(--green-border);border-radius:var(--radius);padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;';
+  div.innerHTML = `<div class="tool-icon-tile" style="width:22px;height:22px;background:${t.iconBg};border-radius:5px;"><i class="ti ${t.icon}" style="font-size:12px;color:${t.iconColor};"></i></div>
+  <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:500;">${t.name}</div><div style="font-size:10px;color:var(--text-tertiary);">${t.note}</div></div>
+  <button style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:16px;line-height:1;">×</button>`;
+  da.appendChild(div);
+});
+
+// ── PROJECT DETAIL STEPPER ──
+const detailStages = [
+  {label:'Assessment',status:'Completed',done:true},{label:'Policy',status:'Completed',done:true},
+  {label:'Supplier',status:'Completed',done:true},{label:'Development',status:'Completed',done:true},
+  {label:'Deployment',status:'In Progress',active:true},
+  {label:'Use',status:'Not started',num:6},{label:'Improvement',status:'Not started',num:7},{label:'Decommission',status:'Not started',num:8},
+];
+const ds = document.getElementById('detail-stepper');
+detailStages.forEach((stage, i) => {
+  const step = document.createElement('div');
+  step.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;';
+  const lineLeft = i===0?'transparent':detailStages[i-1].done||stage.done?'#1D9E75':'#D3D1C7';
+  const lineRight = i===7?'transparent':stage.done?'#1D9E75':'#D3D1C7';
+  let circle = '';
+  if(stage.done) circle = `<div style="width:28px;height:28px;border-radius:50%;background:#1D9E75;border:2px solid #1D9E75;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;z-index:1;"><i class="ti ti-check" style="font-size:13px;color:white;"></i></div>`;
+  else if(stage.active) circle = `<div style="width:32px;height:32px;border-radius:50%;background:#FBEDD8;border:2.5px solid #EF9F27;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;z-index:1;box-shadow:0 0 0 4px rgba(239,159,39,0.15);"><i class="ti ti-player-play-filled" style="font-size:13px;color:#EF9F27;"></i></div>`;
+  else circle = `<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-secondary);border:1.5px solid #D3D1C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;z-index:1;"><span style="font-size:10px;font-weight:600;color:var(--text-tertiary);">${stage.num}</span></div>`;
+  const labelColor = stage.done?'#1D9E75':stage.active?'#EF9F27':'var(--text-tertiary)';
+  step.innerHTML = `<div style="display:flex;align-items:center;width:100%;"><div style="flex:1;height:2px;background:${lineLeft};"></div>${circle}<div style="flex:1;height:2px;background:${lineRight};"></div></div><div style="font-size:9px;font-weight:${stage.active?'600':'500'};color:${labelColor};margin-top:4px;text-align:center;">${stage.label}</div><div style="font-size:9px;color:${labelColor};text-align:center;">${stage.status}</div>`;
+  ds.appendChild(step);
+});
+
+// ── TRAINING CATALOG ──
+// rec strip
+const stripItems = [
+  {title:'Build a Copilot Studio Agent in 60 Min',provider:'Microsoft Learn',format:'Self-paced',dur:'3h',skill:'Intermediate',tool:'Copilot Studio',toolBg:'var(--indigo-light)',toolColor:'var(--indigo-dark)',active:true},
+  {title:'Power Automate Fundamentals',provider:'Microsoft Learn',format:'Video',dur:'2h',skill:'Basic',tool:'Power Automate',toolBg:'#D5EBE0',toolColor:'#0F6E56',active:true},
+  {title:'SharePoint for AI Builders',provider:'Microsoft Learn',format:'Self-paced',dur:'1.5h',skill:'Basic',tool:'SharePoint',toolBg:'#D5EBE0',toolColor:'#0F6E56',active:true},
+  {title:'Conversational AI with Power Platform',provider:'GCS Internal',format:'Workshop',dur:'4h',skill:'Intermediate',tool:'Copilot Studio',toolBg:'var(--indigo-light)',toolColor:'var(--indigo-dark)',active:false},
+];
+const fmtColors = {'Self-paced':'fmt-self','Video':'fmt-video','Workshop':'fmt-workshop','Instructor-led':'fmt-instructor'};
+const strip = document.getElementById('rec-strip');
+stripItems.forEach(item => {
+  const card = document.createElement('div');
+  card.className = `rec-strip-card ${item.active?'rec-strip-card-active':'rec-strip-card-plain'}`;
+  const badgeHtml = item.active ? `<div style="position:absolute;top:-1px;right:10px;background:var(--indigo);color:white;font-size:9px;font-weight:600;padding:2px 8px;border-radius:0 0 5px 5px;">For your project</div>` : '';
+  card.innerHTML = `${badgeHtml}<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;${item.active?'margin-top:8px;':''}"><span class="format-badge ${fmtColors[item.format]||'fmt-self'}">${item.format}</span><span style="font-size:10px;color:var(--text-tertiary);">${item.dur}</span></div><div style="font-size:11px;font-weight:600;margin-bottom:3px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${item.title}</div><div style="font-size:10px;color:var(--text-tertiary);margin-bottom:8px;">${item.provider} · ${item.skill}</div><div style="margin-bottom:8px;"><span class="tool-tag" style="background:${item.toolBg};color:${item.toolColor};">${item.tool}</span></div><button class="btn ${item.active?'btn-primary':'btn-ghost'} btn-sm" style="width:100%;justify-content:center;font-size:10px;"><i class="ti ti-external-link" style="font-size:11px;"></i>Open</button>`;
+  strip.appendChild(card);
+});
+
+// catalog grid
+const catItems = [
+  {title:'Azure ML for Predictive Maintenance',provider:'Microsoft Learn',format:'Video',dur:'4h',skill:'Advanced',desc:'Learn to build predictive models using Azure ML for equipment failure forecasting and anomaly detection in manufacturing environments.',tools:[{name:'Azure ML',bg:'#FEF3EC',color:'#B85C1A'},{name:'Azure AI Foundry',bg:'#FEF3EC',color:'#B85C1A'}]},
+  {title:'Power BI Fundamentals for Service Teams',provider:'Microsoft Learn',format:'Self-paced',dur:'2h',skill:'Basic',desc:'Build dashboards and reports for service KPIs, ticket volumes, and resolution trends using Power BI Desktop and Power BI Service.',tools:[{name:'Power BI',bg:'#FEF3D0',color:'#BA7517'}]},
+  {title:'AI Governance & Responsible AI Practices',provider:'GCS Internal',format:'Workshop',dur:'6h',skill:'Intermediate',desc:'Covers the GCS AI Governance Framework, ISO 42001 principles, risk assessment, and responsible AI use requirements for all practitioners.',tools:[{name:'All tools',bg:'var(--bg-secondary)',color:'var(--text-secondary)'}]},
+  {title:'Power Apps Canvas Apps Fundamentals',provider:'Microsoft Learn',format:'Self-paced',dur:'3h',skill:'Intermediate',desc:'Build low-code canvas apps for internal workflows, intake forms, and mobile-friendly tools for field teams without writing complex code.',tools:[{name:'Power Apps',bg:'#E6F1FB',color:'#185FA5'}]},
+  {title:'Azure AI Search: Semantic Retrieval at Scale',provider:'Microsoft Learn',format:'Video',dur:'5h',skill:'Advanced',desc:'Index large document corpora, implement semantic search, and integrate with LLMs for retrieval-augmented generation (RAG) patterns.',tools:[{name:'Azure AI Search',bg:'#FEF3EC',color:'#B85C1A'},{name:'Azure AI Foundry',bg:'#FEF3EC',color:'#B85C1A'}]},
+  {title:'Getting Started with M365 Copilot for Business Teams',provider:'GCS Internal',format:'Instructor-led',dur:'8h',skill:'Intermediate',desc:'Hands-on session covering M365 Copilot in Teams, Outlook, and Word. Practical use cases for summarisation, drafting, and meeting intelligence.',tools:[{name:'M365 Copilot',bg:'#E6F1FB',color:'#185FA5'}]},
+  {title:'Introduction to AI for Non-Technical Employees',provider:'GCS Internal',format:'Self-paced',dur:'2.5h',skill:'Basic',desc:'Foundational AI literacy course covering how AI works, practical use cases in GCS, responsible use principles, and how to submit your first AI idea.',tools:[{name:'All tools',bg:'var(--bg-secondary)',color:'var(--text-secondary)'}]},
+  {title:'Power BI Advanced: DAX, Dataflows & AI Visuals',provider:'Microsoft Learn',format:'Video',dur:'3h',skill:'Intermediate',desc:'Advanced Power BI techniques including DAX formulas, dataflow setup, AI visuals (key influencers, decomposition tree), and integration with Azure ML.',tools:[{name:'Power BI',bg:'#FEF3D0',color:'#BA7517'},{name:'Azure ML',bg:'#FEF3EC',color:'#B85C1A'}]},
+  {title:'Azure ML Engineering Bootcamp',provider:'GCS Internal',format:'Instructor-led',dur:'12h',skill:'Advanced',desc:'Full-day intensive covering MLOps, model training pipelines, and deployment. Scheduled for Q3 2026.',tools:[{name:'Azure ML',bg:'var(--bg-secondary)',color:'var(--text-tertiary)'}],comingSoon:true,availLabel:'Coming Q3 2026'},
+];
+const cg = document.getElementById('catalog-grid');
+catItems.forEach(item => {
+  const card = document.createElement('div');
+  card.className = `training-card${item.comingSoon?' training-card-cs':''}`;
+  const fmtBadge = `<span class="format-badge ${item.comingSoon?'':''}${fmtColors[item.format]||'fmt-self'}" ${item.comingSoon?'style="border:0.5px solid var(--border);background:var(--bg-secondary);color:var(--text-tertiary);"':''}>${item.format}</span>`;
+  const toolTags = item.tools.map(t => `<span class="tool-tag" style="background:${t.bg};color:${t.color};">${t.name}</span>`).join(' ');
+  const btnHtml = item.comingSoon
+    ? `<button style="width:100%;background:none;border:0.5px solid var(--border);color:var(--text-tertiary);padding:7px;border-radius:var(--radius);font-size:11px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:5px;"><i class="ti ti-clock" style="font-size:12px;"></i>${item.availLabel}</button>`
+    : `<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;"><i class="ti ti-external-link" style="font-size:12px;"></i>Open training</button>`;
+  card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">${fmtBadge}<span style="font-size:10px;color:var(--text-tertiary);">${item.dur} · ${item.skill}</span></div><div style="font-size:12px;font-weight:600;margin-bottom:3px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;${item.comingSoon?'color:var(--text-tertiary);':''}">${item.title}</div><div style="font-size:10px;color:var(--text-tertiary);margin-bottom:6px;">${item.provider}</div><div style="font-size:11px;color:var(--text-secondary);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;margin-bottom:10px;flex:1;">${item.desc}</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;">${toolTags}</div>${btnHtml}`;
+  cg.appendChild(card);
+});
+</script>
+</body>
+</html>
