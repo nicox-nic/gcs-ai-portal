@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Database,
   FileSearch,
+  HeartPulse,
   Settings,
   ShieldCheck,
   Wrench,
@@ -25,6 +26,7 @@ const ROLE_ORDER: Role[] = [
   'AIProgramManager',
   'MaintenanceSustainability',
   'Sponsor',
+  'EHS',
   'Admin',
 ]
 
@@ -37,6 +39,7 @@ const ROLE_ICONS: Record<Role, { icon: LucideIcon; iconClassName: string }> = {
   AIProgramManager: { icon: BarChart3, iconClassName: 'text-amber-700' },
   MaintenanceSustainability: { icon: Wrench, iconClassName: 'text-green-800' },
   Sponsor: { icon: Briefcase, iconClassName: 'text-green-800' },
+  EHS: { icon: HeartPulse, iconClassName: 'text-green-800' },
   Admin: { icon: Settings, iconClassName: 'text-stone-600' },
 }
 
@@ -64,6 +67,12 @@ export function LoginPage() {
             <span className="text-xl font-medium text-stone-900">AI Project Portal</span>
           </div>
           <p className="text-sm text-stone-600">Sign in — Demo Mode</p>
+        </div>
+
+        <div className="mb-5 rounded-md border-[0.5px] border-indigo-200 bg-indigo-50 px-3.5 py-2.5 text-left text-[11px] leading-relaxed text-indigo-900">
+          <span className="font-medium">Mock M365:</span> selected accounts show as{' '}
+          <em>pending IT approval</em>. You can still enter the portal and set up a profile — demo
+          copy only; no real Entra / M365 check.
         </div>
 
         <p className="mb-3 text-left text-xs text-stone-500">Select your role</p>

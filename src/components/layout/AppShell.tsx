@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { DemoBanner } from '@/components/layout/DemoBanner'
+import { ProfileIncompleteBanner } from '@/components/layout/ProfileIncompleteBanner'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -19,6 +20,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <DemoBanner />
+        <ProfileIncompleteBanner />
         <Topbar onMenuClick={() => setMobileNavOpen(true)} />
         <main className="flex-1 p-5">{children}</main>
       </div>

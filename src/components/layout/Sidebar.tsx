@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   Settings,
+  UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItemConfig[] = [
   },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/trainings', label: 'Training Catalog', icon: GraduationCap },
+  { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/admin', label: 'Admin', icon: Settings, roles: ['Admin'] },
 ]
 

@@ -3,6 +3,8 @@ import { AdminPage } from '@/pages/AdminPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { ProfilePage } from '@/pages/ProfilePage'
+import { ProfileSetupPage } from '@/pages/ProfileSetupPage'
 import { ProjectDetailPage } from '@/pages/ProjectDetailPage'
 import { ProjectsListPage } from '@/pages/ProjectsListPage'
 import { RecommendationPage } from '@/pages/RecommendationPage'
@@ -31,6 +33,8 @@ export function AppRoutes() {
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/recommendations" element={<RecommendationPage />} />
         <Route path="/trainings" element={<TrainingCatalogPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/setup" element={<ProfileSetupPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

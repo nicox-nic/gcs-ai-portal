@@ -8,6 +8,10 @@ export const SEED_USERS: User[] = [
     group: 'Engineering',
     site: 'Cebu',
     department: 'Field Service Engineering',
+    skillLevel: 'Basic',
+    toolChain: ['SharePoint', 'Microsoft 365 Copilot', 'Power Automate'],
+    integrationTargets: ['SharePoint', 'Teams', 'Outlook'],
+    profileComplete: true,
   },
   {
     id: 'usr-ba',
@@ -40,6 +44,10 @@ export const SEED_USERS: User[] = [
     group: 'PROGs',
     site: 'Cebu',
     department: 'Data Engineering',
+    skillLevel: 'Advanced',
+    toolChain: ['Azure Machine Learning', 'Azure AI Foundry', 'Power BI', 'Azure AI Search'],
+    integrationTargets: ['Snowflake', 'Power BI', 'SharePoint', 'Custom DB'],
+    profileComplete: true,
   },
   {
     id: 'usr-pm',
@@ -72,5 +80,13 @@ export const SEED_USERS: User[] = [
     group: 'PROGs',
     site: 'Cebu',
     department: 'Platform Admin',
+  },
+  {
+    id: 'usr-ehs',
+    displayName: 'Patricia Lim',
+    role: 'EHS',
+    group: 'PROGs',
+    site: 'Cebu',
+    department: 'Environment, Health & Safety',
   },
 ]

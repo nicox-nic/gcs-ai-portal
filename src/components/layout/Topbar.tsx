@@ -24,9 +24,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const pageTitle = useUiStore((state) => state.pageTitle)
   const currentUser = useAuthStore((state) => state.currentUser)
   const logout = useAuthStore((state) => state.logout)
+  const resetProfileSessionFlags = useUiStore((state) => state.resetProfileSessionFlags)
 
   function handleSignOut() {
     logout()
+    resetProfileSessionFlags()
     navigate('/login')
   }
 
@@ -76,6 +78,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/profile')}>My profile</DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>Switch role</DropdownMenuItem>
               <DropdownMenuItem onClick={handleSignOut}>Sign out</DropdownMenuItem>
             </DropdownMenuContent>

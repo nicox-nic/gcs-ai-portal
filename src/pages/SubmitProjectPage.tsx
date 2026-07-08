@@ -18,6 +18,7 @@ import {
 } from '@/lib/submissionWizard'
 import { useAuthStore } from '@/stores/authStore'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { getProfileDefaults } from '@/stores/profileStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Group, Role, Site } from '@/types'
 
@@ -35,7 +36,10 @@ export function SubmitProjectPage() {
   const combos = useCatalogStore((state) => state.combos)
 
   const [currentStep, setCurrentStep] = useState(1)
-  const [form, setForm] = useState<WizardFormState>(EMPTY_WIZARD_FORM)
+  const [form, setForm] = useState<WizardFormState>(() => ({
+    ...EMPTY_WIZARD_FORM,
+    ...(currentUser ? getProfileDefaults(currentUser.id) : {}),
+  }))
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null)
 
   const checklist = useMemo(() => getWizardChecklist(form), [form])
@@ -137,7 +141,7 @@ export function SubmitProjectPage() {
       const projectId = persistDraft()
       const submission = buildSubmission(form)
       const { top, alternatives } = recommendTools(submission, tools, trainings)
-      const rankedCombos = recommendCombos(submission, combos)
+      const rankedCombos = recommendCombos(submission, combos, tools)
       const recommendedComboIds = rankedCombos
         .filter((combo) => combo.matchScore >= 30)
         .slice(0, 3)
