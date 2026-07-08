@@ -89,8 +89,8 @@ Verified via store/UI gate code + automated tests + seed narrative. Live browser
 
 ## Push / deploy
 
-- Commit message: `chore(release): V3 1.0 — dashboard, seed narrative, polish, verification [Phase 7]`
-- Pushed to `origin/main` — Vercel production deploy from `main`.
+- Commit: `eeb262a` — `chore(release): V3 1.0 — dashboard, seed narrative, polish, verification [Phase 7]`
+- Pushed to `origin/main` (`501ef41..eeb262a`) — Vercel production deploy from `main`.
 
 ## Residual known issues
 
