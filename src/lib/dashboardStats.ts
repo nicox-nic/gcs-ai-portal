@@ -162,15 +162,13 @@ function avatarClassForRole(role: Role | undefined, fallbackGroup: Group): strin
 
 export function computeDashboardStats(projects: Project[], tools: Tool[]): DashboardStats {
   const totalProjects = projects.length
-  const inProgressCount = projects.filter((p) => p.status === 'InProgress').length
+  const inProgressCount = projects.filter((p) => p.status === 'Active').length
   const completedCount = projects.filter((p) => p.status === 'Completed').length
   const hoursSaved = projects
     .filter((p) => p.sponsorValidated && p.reportedBenefitHours !== null)
     .reduce((sum, p) => sum + (p.reportedBenefitHours ?? 0), 0)
 
-  const pendingQualification = projects.filter(
-    (p) => p.status === 'Submitted' && p.currentStage === 'Assessment',
-  ).length
+  const pendingQualification = projects.filter((p) => p.status === 'ForAssessment').length
 
   const awaitingValidation = projects.filter(
     (p) =>
@@ -181,7 +179,7 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
 
   const highRiskProjects = projects.filter(
     (p) =>
-      p.status === 'OnHold' ||
+      p.status === 'Idle' ||
       Object.values(p.stageStatus).some((status) => status === 'Blocked'),
   ).length
 
@@ -197,7 +195,11 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     .map((group) => {
       const groupProjects = projects.filter((p) => p.group === group)
       const denominator = groupProjects.filter(
-        (p) => p.status !== 'Draft' && p.status !== 'Rejected',
+        (p) =>
+          p.status !== 'IdeaDraft' &&
+          p.status !== 'NotQualified' &&
+          p.status !== 'Cancelled' &&
+          p.status !== 'Rejected',
       ).length
       const numerator = groupProjects.filter((p) => p.status === 'Completed').length
       const percentage = denominator > 0 ? Math.round((numerator / denominator) * 100) : 0

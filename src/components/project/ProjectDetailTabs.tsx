@@ -465,6 +465,7 @@ export function ProjectRecommendationsTab({
     project.submission,
     combos,
     project.recommendedComboIds,
+    tools,
   )
 
   return (

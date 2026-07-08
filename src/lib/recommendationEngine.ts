@@ -1,4 +1,3 @@
-import { SEED_TOOLS } from '@/data/seedTools'
 import type {
   DataSensitivity,
   Recommendation,
@@ -242,8 +241,12 @@ function comboMaxSensitivity(combo: ToolCombo, toolsById: Map<string, Tool>): Da
     'Public') as DataSensitivity
 }
 
-export function recommendCombos(submission: Submission, combos: ToolCombo[]): ToolCombo[] {
-  const toolsById = new Map(SEED_TOOLS.map((tool) => [tool.id, tool]))
+export function recommendCombos(
+  submission: Submission,
+  combos: ToolCombo[],
+  tools: Tool[],
+): ToolCombo[] {
+  const toolsById = new Map(tools.map((tool) => [tool.id, tool]))
   const text = submissionText(submission)
 
   return combos

@@ -38,8 +38,11 @@ export function getDisplayedCombos(
   submission: Submission,
   combos: ToolCombo[],
   recommendedComboIds: string[],
+  tools: Tool[],
 ): ToolCombo[] {
-  const ranked = recommendCombos(submission, combos).filter((combo) => combo.matchScore >= 30)
+  const ranked = recommendCombos(submission, combos, tools).filter(
+    (combo) => combo.matchScore >= 30,
+  )
   const fromIds = recommendedComboIds
     .map((id) => ranked.find((combo) => combo.id === id))
     .filter((combo): combo is ToolCombo => Boolean(combo))

@@ -40,7 +40,7 @@ export function RecommendationPage() {
 
   const displayedCombos = useMemo(() => {
     if (!project) return []
-    return getDisplayedCombos(project.submission, combos, project.recommendedComboIds)
+    return getDisplayedCombos(project.submission, combos, project.recommendedComboIds, tools)
   }, [project, combos])
 
   useEffect(() => {

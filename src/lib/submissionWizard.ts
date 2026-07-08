@@ -124,7 +124,7 @@ export function buildSubmission(form: WizardFormState): Submission {
     skillLevelAvailable: form.skillLevelAvailable as SkillLevel,
     existingTools,
     integrationTargets,
-    estimatedUsers: 50,
+    estimatedUsers: 50, // TODO(V3 Phase 2): collect from intake wizard
     expectedBenefitHours: Number(form.expectedBenefitHours) || 0,
   }
 }

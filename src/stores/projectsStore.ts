@@ -93,27 +93,58 @@ function appendTransition(
   }
 }
 
+/**
+ * Interim stage→status mappings until gate screens land.
+ * Completed arrives only from sponsor approval (Phase 5) — no Use→Completed auto-rule.
+ */
 function applyStatusSideEffects(
   project: Project,
   toStage: LifecycleStage,
   toStatus: StageStatus,
-): ProjectStatus {
+): Pick<Project, 'status' | 'activeSince' | 'lastActivityAt'> {
   let status = project.status
+  let activeSince = project.activeSince
+  const lastActivityAt = nowIso()
 
-  if (toStage === 'Assessment' && toStatus === 'Completed' && status === 'Submitted') {
+  // TODO(V3 Phase 3): replace with explicit qualify gate (checklist UI)
+  if (toStage === 'Assessment' && toStatus === 'Completed' && status === 'ForAssessment') {
     status = 'Qualified'
   }
-  if (toStatus === 'InProgress' && status === 'Qualified') {
-    status = 'InProgress'
-  }
-  if (toStage === 'Use' && toStatus === 'Completed') {
-    status = 'Completed'
-  }
-  if (toStage === 'Decommissioning' && toStatus === 'Completed') {
-    status = 'Decommissioned'
+
+  // TODO(V3 Phase 4): gate Active behind EHS review instead of first post-Assessment stage
+  const preActive: ProjectStatus[] = ['Qualified', 'QualifiedDraft', 'Submitted']
+  if (
+    toStage !== 'Assessment' &&
+    toStatus === 'InProgress' &&
+    preActive.includes(status)
+  ) {
+    status = 'Active'
+    if (!activeSince) {
+      activeSince = lastActivityAt
+    }
   }
 
-  return status
+  if (toStage === 'Decommissioning' && toStatus === 'Completed') {
+    status = 'Deactivated'
+  }
+
+  return { status, activeSince, lastActivityAt }
+}
+
+function emptyV3Fields(timestamp: string) {
+  return {
+    tier: null as Project['tier'],
+    tierRationale: '',
+    autoTiered: false,
+    rewardCategory: null as Project['rewardCategory'],
+    ehsCoordinatorId: null as string | null,
+    qualification: null as Project['qualification'],
+    readiness: null as Project['readiness'],
+    activeSince: null as string | null,
+    lastActivityAt: timestamp,
+    sponsorDecision: null as Project['sponsorDecision'],
+    sponsorDecisionNote: '',
+  }
 }
 
 export const useProjectsStore = create<ProjectsStore>()(
@@ -131,7 +162,7 @@ export const useProjectsStore = create<ProjectsStore>()(
           group: input.group,
           site: input.site,
           department: input.department,
-          status: 'Draft',
+          status: 'IdeaDraft',
           currentStage: 'Assessment',
           stageStatus: emptyStageStatus(),
           submission: input.submission,
@@ -144,6 +175,7 @@ export const useProjectsStore = create<ProjectsStore>()(
           auditLog: [],
           reportedBenefitHours: null,
           sponsorValidated: false,
+          ...emptyV3Fields(timestamp),
         }
         set((state) => ({ projects: [...state.projects, project] }))
         return project
@@ -153,6 +185,7 @@ export const useProjectsStore = create<ProjectsStore>()(
         set((state) => ({
           projects: state.projects.map((project) => {
             if (project.id !== projectId) return project
+            const timestamp = nowIso()
             const transition = appendTransition(project, {
               fromStage: null,
               toStage: 'Assessment',
@@ -161,17 +194,19 @@ export const useProjectsStore = create<ProjectsStore>()(
               actorUserId: project.submitterId,
               actorRole: 'Submitter',
               note: 'Project submitted for qualification.',
+              timestamp,
             })
             return {
               ...project,
-              status: 'Submitted',
+              status: 'ForAssessment',
               currentStage: 'Assessment',
               stageStatus: {
                 ...project.stageStatus,
                 Assessment: 'InProgress',
               },
               auditLog: [...project.auditLog, transition],
-              updatedAt: nowIso(),
+              updatedAt: timestamp,
+              lastActivityAt: timestamp,
             }
           }),
         }))
@@ -187,6 +222,7 @@ export const useProjectsStore = create<ProjectsStore>()(
                   alternativeRecommendations: alternatives,
                   recommendedComboIds,
                   updatedAt: nowIso(),
+                  lastActivityAt: nowIso(),
                 }
               : project,
           ),
@@ -214,10 +250,16 @@ export const useProjectsStore = create<ProjectsStore>()(
         if (primaryCount !== 1) {
           throw new Error('toolStack must contain exactly one primary tool')
         }
+        const timestamp = nowIso()
         set((state) => ({
           projects: state.projects.map((project) =>
             project.id === projectId
-              ? { ...project, toolStack: stack, updatedAt: nowIso() }
+              ? {
+                  ...project,
+                  toolStack: stack,
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
               : project,
           ),
         }))
@@ -251,6 +293,7 @@ export const useProjectsStore = create<ProjectsStore>()(
 
             const fromStage = p.currentStage
             const fromStatus = p.stageStatus[fromStage]
+            const timestamp = nowIso()
             const transition = appendTransition(p, {
               fromStage,
               toStage,
@@ -259,32 +302,35 @@ export const useProjectsStore = create<ProjectsStore>()(
               actorUserId: actor.id,
               actorRole: actor.role,
               note,
+              timestamp,
             })
-            const status = applyStatusSideEffects(p, toStage, toStatus)
+            const sideEffects = applyStatusSideEffects(p, toStage, toStatus)
 
             return {
               ...p,
               currentStage: toStage,
               stageStatus: { ...p.stageStatus, [toStage]: toStatus },
-              status,
+              ...sideEffects,
               auditLog: [...p.auditLog, transition],
-              updatedAt: nowIso(),
+              updatedAt: timestamp,
             }
           }),
         }))
       },
 
       updateProject: (projectId, patch) => {
+        const timestamp = nowIso()
         set((state) => ({
           projects: state.projects.map((project) =>
             project.id === projectId
-              ? { ...project, ...patch, updatedAt: nowIso() }
+              ? { ...project, ...patch, updatedAt: timestamp, lastActivityAt: timestamp }
               : project,
           ),
         }))
       },
 
       reportBenefits: (projectId, hours) => {
+        const timestamp = nowIso()
         set((state) => ({
           projects: state.projects.map((project) =>
             project.id === projectId
@@ -292,7 +338,8 @@ export const useProjectsStore = create<ProjectsStore>()(
                   ...project,
                   reportedBenefitHours: hours,
                   sponsorValidated: false,
-                  updatedAt: nowIso(),
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
                 }
               : project,
           ),
@@ -307,10 +354,11 @@ export const useProjectsStore = create<ProjectsStore>()(
         if (project.reportedBenefitHours === null) {
           throw new Error('Cannot validate benefits before submitter reports hours')
         }
+        const timestamp = nowIso()
         set((state) => ({
           projects: state.projects.map((p) =>
             p.id === projectId
-              ? { ...p, sponsorValidated: true, updatedAt: nowIso() }
+              ? { ...p, sponsorValidated: true, updatedAt: timestamp, lastActivityAt: timestamp }
               : p,
           ),
         }))

@@ -25,6 +25,7 @@ import {
 import { useFilteredProjects } from '@/hooks/useFilteredProjects'
 import { SEQUENTIAL_LIFECYCLE_STAGES, stageProgress } from '@/lib/lifecycle'
 import { getUserDisplayName } from '@/lib/projectDisplay'
+import { PROJECT_STATUSES } from '@/lib/projectStatus'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { useAuthStore } from '@/stores/authStore'
 import { cn, formatRelative, humanizeStage } from '@/lib/utils'
@@ -33,16 +34,7 @@ import type { Group, LifecycleStage, ProjectStatus, Role, Site } from '@/types'
 const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
 const GROUPS: Group[] = ['Engineering', 'Field', 'PROGs', 'Marketing']
 const SITES: Site[] = ['Cebu', 'Costa Rica', 'Japan', 'Korea']
-const STATUSES: ProjectStatus[] = [
-  'Draft',
-  'Submitted',
-  'Qualified',
-  'InProgress',
-  'OnHold',
-  'Completed',
-  'Rejected',
-  'Decommissioned',
-]
+const STATUSES = PROJECT_STATUSES
 
 export function ProjectsListPage() {
   const currentUser = useAuthStore((state) => state.currentUser)

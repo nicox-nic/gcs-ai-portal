@@ -30,6 +30,7 @@ export function humanizeRole(role: Role): string {
     AIProgramManager: 'AI Program Manager',
     MaintenanceSustainability: 'Maintenance & Sustainability',
     Sponsor: 'Sponsor',
+    EHS: 'EHS',
     Admin: 'Admin',
   }
   return labels[role]
@@ -60,6 +61,7 @@ export function roleDescription(role: Role): string {
     AIProgramManager: 'Coordinate deployment and releases.',
     MaintenanceSustainability: 'Operate and sustain solutions post-deployment.',
     Sponsor: 'Approve at qualification and validate benefits at closure.',
+    EHS: 'Review environmental, health, and safety controls before activation.',
     Admin: 'Manage tool, training, and combo catalogs.',
   }
   return descriptions[role]

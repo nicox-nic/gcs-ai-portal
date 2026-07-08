@@ -7,6 +7,7 @@ export type Role =
   | 'AIProgramManager'
   | 'MaintenanceSustainability'
   | 'Sponsor'
+  | 'EHS'
   | 'Admin'
 
 export type Group = 'Engineering' | 'Field' | 'PROGs' | 'Marketing'
@@ -29,14 +30,27 @@ export type StageStatus = 'NotStarted' | 'InProgress' | 'Completed' | 'Blocked'
 export type RiskLevel = 'Low' | 'Medium' | 'High'
 
 export type ProjectStatus =
-  | 'Draft'
-  | 'Submitted'
+  | 'IdeaDraft'
+  | 'ForAssessment'
+  | 'NotQualified'
+  | 'Cancelled'
   | 'Qualified'
-  | 'InProgress'
-  | 'OnHold'
-  | 'Completed'
+  | 'QualifiedDraft'
+  | 'Submitted'
   | 'Rejected'
-  | 'Decommissioned'
+  | 'ForEHSReview'
+  | 'EHSRejected'
+  | 'Active'
+  | 'ForSponsorApproval'
+  | 'Disapproved'
+  | 'Completed'
+  | 'Idle'
+  | 'Deactivated'
+
+/** 1:1 with RiskLevel: Tier1=Low, Tier2=Medium, Tier3=High */
+export type ProjectTier = 'Tier1' | 'Tier2' | 'Tier3'
+
+export type RewardCategory = 'Kaizen' | 'TeamProject' | 'ManagementInitiative' | 'Innovation'
 
 export type SkillLevel = 'None' | 'Basic' | 'Intermediate' | 'Advanced'
 
@@ -55,6 +69,26 @@ export interface User {
   group: Group
   site: Site
   department: string
+  /** Profile setup (V3 Phase 1) — optional until profileComplete */
+  skillLevel?: SkillLevel
+  toolChain?: string[]
+  integrationTargets?: string[]
+  profileComplete?: boolean
+}
+
+/** AI Readiness Checklist — item text lands in Phase 3 */
+export interface ReadinessAssessment {
+  feasibility: boolean[] // 7 items, 0/1
+  viability: boolean[] // 7 items
+  desirability: boolean[] // 7 items
+}
+
+/** AI Qualification Checklist — item text lands in Phase 3 */
+export interface QualificationAssessment {
+  primary: boolean[] // A1–A6 (any true ⇒ qualifies as AI)
+  supporting: boolean[] // B1–B4
+  exclusions: boolean[] // C1–C5
+  riskTier: RiskLevel | null // Section D selection
 }
 
 export interface Tool {
@@ -164,4 +198,15 @@ export interface Project {
   auditLog: StageTransition[]
   reportedBenefitHours: number | null
   sponsorValidated: boolean
+  tier: ProjectTier | null
+  tierRationale: string
+  autoTiered: boolean
+  rewardCategory: RewardCategory | null
+  ehsCoordinatorId: string | null
+  qualification: QualificationAssessment | null
+  readiness: ReadinessAssessment | null
+  activeSince: string | null
+  lastActivityAt: string
+  sponsorDecision: 'Approved' | 'Disapproved' | null
+  sponsorDecisionNote: string
 }

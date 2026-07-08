@@ -43,6 +43,10 @@ export const ROLE_STYLES: Record<Role, RoleStyle> = {
     badge: 'bg-green-50 text-green-900',
     avatar: 'bg-green-50 text-green-900',
   },
+  EHS: {
+    badge: 'bg-green-50 text-green-900',
+    avatar: 'bg-green-50 text-green-900',
+  },
   Admin: {
     badge: 'bg-stone-100 text-stone-900',
     avatar: 'bg-stone-100 text-stone-900',

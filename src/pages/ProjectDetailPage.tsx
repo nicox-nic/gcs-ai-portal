@@ -27,6 +27,7 @@ function showBenefitsTab(project: {
 }): boolean {
   return (
     project.status === 'Completed' ||
+    project.status === 'ForSponsorApproval' ||
     project.currentStage === 'Use' ||
     project.currentStage === 'Improvement' ||
     project.currentStage === 'Decommissioning'

@@ -13,6 +13,23 @@ export function daysAgo(n: number): string {
   return new Date(DEMO_TODAY.getTime() - n * 86400000).toISOString()
 }
 
+/** V3 Phase 0 defaults — tier/qualification content arrives in later phases. */
+function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
+  return {
+    tier: null,
+    tierRationale: '',
+    autoTiered: false,
+    rewardCategory: null,
+    ehsCoordinatorId: null,
+    qualification: null,
+    readiness: null,
+    activeSince: opts?.activeSince ?? null,
+    lastActivityAt: updatedAt,
+    sponsorDecision: null,
+    sponsorDecisionNote: '',
+  } as const
+}
+
 function stageStatus(
   overrides: Partial<Record<LifecycleStage, StageStatus>>,
 ): Record<LifecycleStage, StageStatus> {
@@ -127,7 +144,7 @@ export const SEED_PROJECTS: Project[] = [
     group: 'PROGs',
     site: 'Cebu',
     department: 'Customer Service Ops',
-    status: 'InProgress',
+    status: 'Active',
     currentStage: 'Deployment',
     stageStatus: stageStatus({
       Assessment: 'Completed',
@@ -220,6 +237,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(2), { activeSince: daysAgo(2) }),
     sponsorValidated: false,
   },
   {
@@ -230,7 +248,7 @@ export const SEED_PROJECTS: Project[] = [
     group: 'PROGs',
     site: 'Cebu',
     department: 'Data Engineering',
-    status: 'InProgress',
+    status: 'Active',
     currentStage: 'Development',
     stageStatus: stageStatus({
       Assessment: 'Completed',
@@ -347,6 +365,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(3), { activeSince: daysAgo(3) }),
     sponsorValidated: false,
   },
   {
@@ -357,7 +376,7 @@ export const SEED_PROJECTS: Project[] = [
     group: 'Engineering',
     site: 'Cebu',
     department: 'Field Service Engineering',
-    status: 'Submitted',
+    status: 'ForAssessment',
     currentStage: 'Assessment',
     stageStatus: stageStatus({
       Assessment: 'InProgress',
@@ -439,6 +458,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(3)),
     sponsorValidated: false,
   },
   {
@@ -449,7 +469,7 @@ export const SEED_PROJECTS: Project[] = [
     group: 'Engineering',
     site: 'Cebu',
     department: 'Test Engineering',
-    status: 'OnHold',
+    status: 'Idle',
     currentStage: 'Development',
     stageStatus: stageStatus({
       Assessment: 'Completed',
@@ -556,6 +576,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(8), { activeSince: daysAgo(8) }),
     sponsorValidated: false,
   },
   {
@@ -674,6 +695,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: 24,
+    ...v3Defaults(daysAgo(14), { activeSince: daysAgo(14) }),
     sponsorValidated: true,
   },
   {
@@ -684,7 +706,7 @@ export const SEED_PROJECTS: Project[] = [
     group: 'Marketing',
     site: 'Cebu',
     department: 'Customer Insights',
-    status: 'InProgress',
+    status: 'Active',
     currentStage: 'Use',
     stageStatus: stageStatus({
       Assessment: 'Completed',
@@ -789,6 +811,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(1), { activeSince: daysAgo(1) }),
     sponsorValidated: false,
   },
   {
@@ -922,6 +945,7 @@ export const SEED_PROJECTS: Project[] = [
       ),
     ],
     reportedBenefitHours: 32,
+    ...v3Defaults(daysAgo(6), { activeSince: daysAgo(6) }),
     sponsorValidated: true,
   },
 ]
