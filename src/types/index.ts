@@ -211,4 +211,58 @@ export interface Project {
   lastActivityAt: string
   sponsorDecision: 'Approved' | 'Disapproved' | null
   sponsorDecisionNote: string
+  /** Highest aging milestone already applied (idempotent runAging). */
+  agingMilestone?: AgingMilestone
+}
+
+export type AgingMilestone = 'none' | 'reminder' | 'idle' | 'alert' | 'deactivated'
+
+export type NotificationKind =
+  | 'submitted-for-assessment'
+  | 'qualified'
+  | 'not-qualified'
+  | 'submitted-for-review'
+  | 'approved'
+  | 'rejected'
+  | 'ehs-review-requested'
+  | 'ehs-approved'
+  | 'ehs-rejected'
+  | 'sponsor-approval-requested'
+  | 'completed'
+  | 'disapproved'
+  | 'project-review-logged'
+  | 'aging-reminder'
+  | 'aging-idle'
+  | 'aging-alert'
+  | 'aging-deactivated'
+  | 'reactivated'
+
+export interface Notification {
+  id: string
+  timestamp: string
+  projectId: string
+  projectTitle: string
+  kind: NotificationKind
+  to: string[]
+  cc: string[]
+  subject: string
+  body: string
+  readBy: string[]
+}
+
+export interface CiPortalRecord {
+  ciId: string
+  projectName: string
+  status: ProjectStatus
+  rewardCategory: RewardCategory | null
+  tier: ProjectTier | null
+  submitterName: string
+  leaderName: string
+  sponsorName: string
+  group: Group
+  site: Site
+  createdAt: string
+  activeSince: string | null
+  lastActivityAt: string
+  reportedBenefitHours: number | null
 }

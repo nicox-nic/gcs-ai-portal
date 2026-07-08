@@ -91,6 +91,19 @@ function RoleCallout() {
       className: 'border-green-200 bg-[#EAF3DE] text-green-900',
       icon: ShieldCheck,
     }
+  } else if (
+    (currentUser.role === 'GovernanceLead' ||
+      currentUser.role === 'AIProgramManager' ||
+      currentUser.role === 'Admin') &&
+    stats.idleCount > 0
+  ) {
+    content = {
+      text: 'Idle projects needing attention:',
+      suffix: '',
+      count: stats.idleCount,
+      className: 'border-amber-200 bg-amber-50 text-amber-900',
+      icon: Clock3,
+    }
   } else if (currentUser.role === 'RiskCompliance' && stats.highRiskProjects > 0) {
     content = {
       text: 'High-risk projects:',
@@ -106,11 +119,13 @@ function RoleCallout() {
   const Icon = content.icon
 
   const reviewPath =
-    currentUser.role === 'GovernanceLead' || currentUser.role === 'RiskCompliance'
+    content.text.startsWith('Pending qualification')
       ? '/projects?status=ForAssessment'
-      : currentUser.role === 'EHS'
+      : content.text.startsWith('EHS review')
         ? '/projects?status=ForEHSReview'
-        : '/projects'
+        : content.text.startsWith('Idle')
+          ? '/projects?status=Idle'
+          : '/projects'
 
   return (
     <div

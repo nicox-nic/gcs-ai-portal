@@ -101,6 +101,8 @@ export type DashboardStats = {
   pendingEhsReview: number
   awaitingValidation: number
   highRiskProjects: number
+  idleCount: number
+  deactivatedCount: number
   lifecycleByStage: LifecycleStageDatum[]
   completionRateByGroup: GroupRateDatum[]
   adoptionByGroup: GroupRateDatum[]
@@ -171,6 +173,8 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
 
   const pendingQualification = projects.filter((p) => p.status === 'ForAssessment').length
   const pendingEhsReview = projects.filter((p) => p.status === 'ForEHSReview').length
+  const idleCount = projects.filter((p) => p.status === 'Idle').length
+  const deactivatedCount = projects.filter((p) => p.status === 'Deactivated').length
 
   const awaitingValidation = projects.filter((p) => p.status === 'ForSponsorApproval').length
 
@@ -318,6 +322,8 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     pendingEhsReview,
     awaitingValidation,
     highRiskProjects,
+    idleCount,
+    deactivatedCount,
     lifecycleByStage,
     completionRateByGroup,
     adoptionByGroup,

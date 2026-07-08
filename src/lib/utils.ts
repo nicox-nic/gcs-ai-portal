@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
-import { format, formatDistanceToNow } from 'date-fns'
+import { format, formatDistance } from 'date-fns'
 import { twMerge } from 'tailwind-merge'
+import { getDemoNow } from '@/stores/demoClockStore'
 import type { LifecycleStage, Role } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
@@ -15,9 +16,12 @@ export function formatDateTime(iso: string): string {
   return format(new Date(iso), 'MMM d, yyyy, h:mm a')
 }
 
-/** Relative labels drift from DEMO_TODAY on long-lived demos — absolute dates in tooltips stay correct. */
-export function formatRelative(iso: string): string {
-  return formatDistanceToNow(new Date(iso), { addSuffix: true })
+/**
+ * Relative labels use the demo clock by default (project activity / list Updated).
+ * Pass an explicit `now` to override.
+ */
+export function formatRelative(iso: string, now: Date = getDemoNow()): string {
+  return formatDistance(new Date(iso), now, { addSuffix: true })
 }
 
 export function humanizeRole(role: Role): string {

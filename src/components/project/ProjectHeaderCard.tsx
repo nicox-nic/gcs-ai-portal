@@ -8,6 +8,7 @@ import {
   Route,
   User,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { TierBadge } from '@/components/common/TierBadge'
@@ -54,6 +55,12 @@ export function ProjectHeaderCard({
                   EHS review required
                 </span>
               )}
+              <Link
+                to="/ci-portal"
+                className="rounded-sm border-[0.5px] border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-600 hover:border-indigo-200 hover:text-indigo-800"
+              >
+                Mirrored to CI Portal
+              </Link>
             </div>
             <div className="flex flex-wrap gap-4 text-[11px] text-stone-500">
               <span className="inline-flex items-center gap-1">

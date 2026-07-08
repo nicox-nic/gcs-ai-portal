@@ -33,6 +33,7 @@ type GateDialog =
   | { kind: 'sponsorApprove' }
   | { kind: 'sponsorDisapprove' }
   | { kind: 'reviseDisapproval' }
+  | { kind: 'reactivate' }
   | null
 
 type StatusGateActionsProps = {
@@ -64,6 +65,7 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
   const sponsorApprove = useProjectsStore((s) => s.sponsorApprove)
   const sponsorDisapprove = useProjectsStore((s) => s.sponsorDisapprove)
   const reviseAfterDisapproval = useProjectsStore((s) => s.reviseAfterDisapproval)
+  const reactivateProject = useProjectsStore((s) => s.reactivateProject)
 
   const [dialog, setDialog] = useState<GateDialog>(null)
   const [reason, setReason] = useState('')
@@ -83,6 +85,12 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
     (canOwnStack(project, currentUser) || canClosureOwner(currentUser, project))
   const canSubmitClosure = currentUser !== null && canClosureOwner(currentUser, project)
   const canSponsor = currentUser !== null && canSponsorAct(currentUser, project)
+  const canReactivate =
+    currentUser !== null &&
+    (currentUser.role === 'Admin' ||
+      currentUser.role === 'GovernanceLead' ||
+      canClosureOwner(currentUser, project) ||
+      canOwnStack(project, currentUser))
 
   const relevantStatuses = new Set([
     'Submitted',
@@ -92,6 +100,8 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
     'Active',
     'ForSponsorApproval',
     'Disapproved',
+    'Idle',
+    'Deactivated',
   ])
   if (!relevantStatuses.has(project.status)) {
     return null
@@ -135,6 +145,12 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
     }
     if (project.status === 'Disapproved' && !canSubmitClosure) {
       return 'Awaiting owner revision after sponsor disapproval.'
+    }
+    if (
+      (project.status === 'Idle' || project.status === 'Deactivated') &&
+      !canReactivate
+    ) {
+      return 'Awaiting owner or Governance to reactivate.'
     }
     return null
   })()
@@ -267,6 +283,16 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
           onClick={() => setDialog({ kind: 'reviseDisapproval' })}
         >
           Revise & resubmit
+        </Button>
+      )}
+
+      {(project.status === 'Idle' || project.status === 'Deactivated') && canReactivate && (
+        <Button
+          type="button"
+          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+          onClick={() => setDialog({ kind: 'reactivate' })}
+        >
+          Reactivate
         </Button>
       )}
 
@@ -544,6 +570,20 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
             () => reviseAfterDisapproval(project.id, currentUser),
             'Returned to Active.',
           )
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'reactivate'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Reactivate project"
+        description="Return this project to Active and reset the aging clock (lastActivityAt)."
+        confirmLabel="Reactivate"
+        onConfirm={() => {
+          if (!currentUser) return
+          runSafe(() => reactivateProject(project.id, currentUser), 'Project reactivated.')
         }}
       />
     </div>

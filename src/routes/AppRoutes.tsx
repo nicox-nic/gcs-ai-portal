@@ -1,10 +1,12 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminPage } from '@/pages/AdminPage'
 import { AssistedIntakePage } from '@/pages/AssistedIntakePage'
+import { CiPortalPage } from '@/pages/CiPortalPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { ManualSubmitPage } from '@/pages/ManualSubmitPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { NotificationsPage } from '@/pages/NotificationsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { ProfileSetupPage } from '@/pages/ProfileSetupPage'
 import { ProjectDetailPage } from '@/pages/ProjectDetailPage'
@@ -36,6 +38,8 @@ export function AppRoutes() {
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/recommendations" element={<RecommendationPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/ci-portal" element={<CiPortalPage />} />
         <Route path="/trainings" element={<TrainingCatalogPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/setup" element={<ProfileSetupPage />} />

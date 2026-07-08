@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { AlertTriangle, Database, FolderKanban, RotateCcw } from 'lucide-react'
+import { AlertTriangle, Clock, Database, FolderKanban, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { formatDateTime } from '@/lib/utils'
 import { clearAllLocalData } from '@/stores/bootstrapStores'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { demoNowIso, useDemoClockStore } from '@/stores/demoClockStore'
 import { useProfileStore } from '@/stores/profileStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 
@@ -14,8 +17,26 @@ export function AdminDemoControlsTab() {
   const resetCatalog = useCatalogStore((state) => state.resetCatalog)
   const resetProjects = useProjectsStore((state) => state.resetProjects)
   const resetProfiles = useProfileStore((state) => state.resetProfiles)
+  const runAging = useProjectsStore((state) => state.runAging)
+  const offsetDays = useDemoClockStore((state) => state.offsetDays)
+  const advanceDays = useDemoClockStore((state) => state.advanceDays)
+  const setOffset = useDemoClockStore((state) => state.setOffset)
+  const resetClock = useDemoClockStore((state) => state.reset)
 
   const [pendingAction, setPendingAction] = useState<DemoAction>(null)
+  const [customDays, setCustomDays] = useState('7')
+
+  const advanceAndAge = (n: number) => {
+    advanceDays(n)
+    runAging()
+    toast.success(`Demo clock advanced +${n}d — aging applied.`)
+  }
+
+  const handleResetClock = () => {
+    resetClock()
+    runAging()
+    toast.success('Demo clock reset to DEMO_TODAY (offset 0).')
+  }
 
   const handleConfirm = () => {
     if (pendingAction === 'catalog') {
@@ -89,6 +110,80 @@ export function AdminDemoControlsTab() {
 
   return (
     <>
+      <div className="mb-4 rounded-lg border-[0.5px] border-indigo-200 bg-indigo-50/40 p-4">
+        <div className="mb-2 flex items-center gap-2">
+          <Clock className="h-4 w-4 text-indigo-600" />
+          <h3 className="text-xs font-medium text-stone-900">Demo clock</h3>
+        </div>
+        <p className="mb-3 text-[11px] leading-relaxed text-stone-600">
+          Current demo time: <strong>{formatDateTime(demoNowIso())}</strong> · offset{' '}
+          <strong>{offsetDays}</strong> day{offsetDays === 1 ? '' : 's'} from DEMO_TODAY. Advancing
+          the clock runs the aging engine.
+        </p>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {[7, 14, 30, 180].map((n) => (
+            <Button
+              key={n}
+              type="button"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => advanceAndAge(n)}
+            >
+              +{n}d
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-8 text-xs"
+            onClick={handleResetClock}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset clock
+          </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="number"
+            className="h-8 w-24 text-xs"
+            value={customDays}
+            onChange={(e) => setCustomDays(e.target.value)}
+            min={1}
+          />
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            onClick={() => {
+              const n = Number(customDays)
+              if (!n || n <= 0) {
+                toast.error('Enter a positive number of days.')
+                return
+              }
+              advanceAndAge(n)
+            }}
+          >
+            Advance custom
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => {
+              const n = Number(customDays)
+              if (Number.isNaN(n)) {
+                toast.error('Enter a valid offset.')
+                return
+              }
+              setOffset(n)
+              runAging()
+              toast.success(`Demo clock offset set to ${n}d.`)
+            }}
+          >
+            Set absolute offset
+          </Button>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4 transition-shadow hover:shadow-md">
           <div className="mb-2 flex items-center gap-2">

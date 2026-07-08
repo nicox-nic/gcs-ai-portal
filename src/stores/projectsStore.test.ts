@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { DEMO_TODAY } from '@/data/seedProjects'
 import { SEED_USERS } from '@/data/seedRoles'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { demoNowIso, useDemoClockStore } from '@/stores/demoClockStore'
+import { useNotificationsStore } from '@/stores/notificationsStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, Submission, User } from '@/types'
 
@@ -160,5 +163,79 @@ describe('projectsStore Phase 5 closure', () => {
     expect(updated?.sponsorValidated).toBe(true)
     expect(updated?.sponsorDecision).toBe('Approved')
     expect(updated?.stageStatus.Use).toBe('Completed')
+  })
+})
+
+describe('projectsStore Phase 6 aging', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useDemoClockStore.getState().reset()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('runAging transitions Active→Idle and emits a notification', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Aging idle test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    const fifteenDaysAgo = new Date(
+      DEMO_TODAY.getTime() - 15 * 86400000,
+    ).toISOString()
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Active' as const,
+              lastActivityAt: fifteenDaysAgo,
+              activeSince: fifteenDaysAgo,
+              agingMilestone: 'none' as const,
+            }
+          : p,
+      ),
+    }))
+
+    useProjectsStore.getState().runAging()
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === created.id)
+    expect(updated?.status).toBe('Idle')
+    expect(updated?.agingMilestone).toBe('idle')
+
+    const notes = useNotificationsStore.getState().notifications
+    expect(notes.some((n) => n.kind === 'aging-idle' && n.projectId === created.id)).toBe(true)
+  })
+
+  it('reactivateProject resets lastActivityAt and returns to Active', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Reactivate test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    const old = new Date(DEMO_TODAY.getTime() - 20 * 86400000).toISOString()
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Idle' as const,
+              lastActivityAt: old,
+              agingMilestone: 'idle' as const,
+            }
+          : p,
+      ),
+    }))
+
+    const submitter = userByRole('Submitter')
+    useProjectsStore.getState().reactivateProject(created.id, submitter)
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === created.id)
+    expect(updated?.status).toBe('Active')
+    expect(updated?.agingMilestone).toBe('none')
+    expect(updated?.lastActivityAt).toBe(demoNowIso())
   })
 })

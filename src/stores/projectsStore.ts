@@ -3,16 +3,23 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SEED_PROJECTS } from '@/data/seedProjects'
 import {
+  computeAging,
+  shouldApplyAgingMilestone,
+} from '@/lib/aging'
+import {
   canActOnStage,
   getStageMeta,
   isAllowedTransition,
 } from '@/lib/lifecycle'
+import { notify } from '@/lib/notificationRules'
 import { canQualify } from '@/lib/qualificationLogic'
 import { getAllowedStatusTransitions } from '@/lib/projectStatus'
 import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { demoNowIso, getDemoNow } from '@/stores/demoClockStore'
 import type {
+  AgingMilestone,
   Group,
   LifecycleStage,
   Project,
@@ -112,6 +119,8 @@ type ProjectsStore = {
   reportBenefits: (projectId: string, hours: number) => void
   /** @deprecated Phase 5 — completion via sponsorApprove; kept for reset/compat only. */
   validateBenefits: (projectId: string) => void
+  runAging: () => void
+  reactivateProject: (projectId: string, actor: User) => void
   resetProjects: () => void
 }
 
@@ -130,7 +139,16 @@ function emptyStageStatus(): Record<LifecycleStage, StageStatus> {
 }
 
 function nowIso(): string {
-  return new Date().toISOString()
+  return demoNowIso()
+}
+
+const AGING_SYSTEM_ACTOR: User = {
+  id: 'system-aging',
+  displayName: 'Aging Engine',
+  role: 'Admin',
+  group: 'PROGs',
+  site: 'Cebu',
+  department: 'System',
 }
 
 function appendTransition(
@@ -216,6 +234,7 @@ function activateProjectFields(project: Project, timestamp: string): Partial<Pro
     status: 'Active' as const,
     activeSince: project.activeSince ?? timestamp,
     lastActivityAt: timestamp,
+    agingMilestone: 'none' as AgingMilestone,
     currentStage: 'Development' as const,
     stageStatus: {
       ...project.stageStatus,
@@ -237,6 +256,7 @@ function emptyV3Fields(timestamp: string) {
     lastActivityAt: timestamp,
     sponsorDecision: null as Project['sponsorDecision'],
     sponsorDecisionNote: '',
+    agingMilestone: 'none' as AgingMilestone,
   }
 }
 
@@ -276,6 +296,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       },
 
       submitProject: (projectId) => {
+        let notified: Project | null = null
         set((state) => ({
           projects: state.projects.map((project) => {
             if (project.id !== projectId) return project
@@ -290,7 +311,7 @@ export const useProjectsStore = create<ProjectsStore>()(
               note: 'Project submitted for qualification.',
               timestamp,
             })
-            return {
+            const next: Project = {
               ...project,
               status: 'ForAssessment',
               currentStage: 'Assessment',
@@ -302,8 +323,11 @@ export const useProjectsStore = create<ProjectsStore>()(
               updatedAt: timestamp,
               lastActivityAt: timestamp,
             }
+            notified = next
+            return next
           }),
         }))
+        if (notified) notify(notified, 'submitted-for-assessment')
       },
 
       setRecommendations: (projectId, recs, alternatives, recommendedComboIds) => {
@@ -474,6 +498,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'qualified', actor)
       },
 
       rejectQualification: (projectId, reason, actor) => {
@@ -512,6 +538,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'not-qualified', actor)
       },
 
       resubmitForAssessment: (projectId, actor) => {
@@ -641,6 +669,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'submitted-for-review', actor)
       },
 
       saveQualifiedDraft: (projectId, actor) => {
@@ -757,6 +787,14 @@ export const useProjectsStore = create<ProjectsStore>()(
             }
           }),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) {
+          if (nextStatus === 'ForEHSReview') {
+            notify(updated, 'ehs-review-requested', actor)
+          } else {
+            notify(updated, 'approved', actor)
+          }
+        }
       },
 
       rejectSubmission: (projectId, reason, actor) => {
@@ -795,6 +833,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'rejected', actor)
       },
 
       ehsApprove: (projectId, actor, note) => {
@@ -831,6 +871,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'ehs-approved', actor)
       },
 
       ehsReject: (projectId, reason, actor) => {
@@ -869,6 +911,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'ehs-rejected', actor)
       },
 
       resubmitAfterRejection: (projectId, actor) => {
@@ -924,7 +968,6 @@ export const useProjectsStore = create<ProjectsStore>()(
         }
         if (!note.trim()) throw new Error('A project review note is required.')
 
-        // TODO(V3 Phase 6): emit notification for project review
         const timestamp = nowIso()
         const transition = appendTransition(project, {
           fromStage: project.currentStage,
@@ -949,6 +992,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'project-review-logged', actor)
       },
 
       submitForSponsorApproval: (projectId, payload, actor) => {
@@ -1002,6 +1047,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'sponsor-approval-requested', actor)
       },
 
       sponsorApprove: (projectId, actor, note) => {
@@ -1049,6 +1096,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'completed', actor)
       },
 
       sponsorDisapprove: (projectId, reason, actor) => {
@@ -1090,6 +1139,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'disapproved', actor)
       },
 
       reviseAfterDisapproval: (projectId, actor) => {
@@ -1181,6 +1232,178 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+      },
+
+      runAging: () => {
+        const now = getDemoNow()
+        const timestamp = nowIso()
+        const notifications: Array<{ project: Project; kind: Parameters<typeof notify>[1] }> = []
+
+        set((state) => ({
+          projects: state.projects.map((project) => {
+            if (project.status !== 'Active' && project.status !== 'Idle') return project
+
+            const { phase, daysInactive } = computeAging(project, now)
+            if (phase === 'active') return project
+
+            // Active projects that are past the idle threshold always Idle first
+            // (even if days also exceed alert/deactivate).
+            if (project.status === 'Active' && (phase === 'idle' || phase === 'alert' || phase === 'deactivated')) {
+              if (!shouldApplyAgingMilestone(project.agingMilestone, 'idle')) {
+                return project
+              }
+              const transition = appendTransition(project, {
+                fromStage: project.currentStage,
+                toStage: project.currentStage,
+                fromStatus: project.stageStatus[project.currentStage],
+                toStatus: project.stageStatus[project.currentStage],
+                actorUserId: AGING_SYSTEM_ACTOR.id,
+                actorRole: AGING_SYSTEM_ACTOR.role,
+                note: `Aged to Idle after ${daysInactive} days inactive.`,
+                timestamp,
+              })
+              const next: Project = {
+                ...project,
+                status: 'Idle',
+                agingMilestone: 'idle',
+                updatedAt: timestamp,
+                auditLog: [...project.auditLog, transition],
+              }
+              notifications.push({ project: next, kind: 'aging-idle' })
+              return next
+            }
+
+            if (project.status === 'Active' && phase === 'reminder') {
+              if (!shouldApplyAgingMilestone(project.agingMilestone, 'reminder')) {
+                return project
+              }
+              const transition = appendTransition(project, {
+                fromStage: project.currentStage,
+                toStage: project.currentStage,
+                fromStatus: project.stageStatus[project.currentStage],
+                toStatus: project.stageStatus[project.currentStage],
+                actorUserId: AGING_SYSTEM_ACTOR.id,
+                actorRole: AGING_SYSTEM_ACTOR.role,
+                note: `Aging reminder: ${daysInactive} days inactive.`,
+                timestamp,
+              })
+              const next: Project = {
+                ...project,
+                agingMilestone: 'reminder',
+                updatedAt: timestamp,
+                auditLog: [...project.auditLog, transition],
+              }
+              notifications.push({ project: next, kind: 'aging-reminder' })
+              return next
+            }
+
+            if (project.status === 'Idle' && phase === 'deactivated') {
+              if (!shouldApplyAgingMilestone(project.agingMilestone, 'deactivated')) {
+                return project
+              }
+              const transition = appendTransition(project, {
+                fromStage: project.currentStage,
+                toStage: project.currentStage,
+                fromStatus: project.stageStatus[project.currentStage],
+                toStatus: project.stageStatus[project.currentStage],
+                actorUserId: AGING_SYSTEM_ACTOR.id,
+                actorRole: AGING_SYSTEM_ACTOR.role,
+                note: `Deactivated after ${daysInactive} days inactive.`,
+                timestamp,
+              })
+              const next: Project = {
+                ...project,
+                status: 'Deactivated',
+                agingMilestone: 'deactivated',
+                updatedAt: timestamp,
+                auditLog: [...project.auditLog, transition],
+              }
+              notifications.push({ project: next, kind: 'aging-deactivated' })
+              return next
+            }
+
+            if (project.status === 'Idle' && phase === 'alert') {
+              if (!shouldApplyAgingMilestone(project.agingMilestone, 'alert')) {
+                return project
+              }
+              const transition = appendTransition(project, {
+                fromStage: project.currentStage,
+                toStage: project.currentStage,
+                fromStatus: project.stageStatus[project.currentStage],
+                toStatus: project.stageStatus[project.currentStage],
+                actorUserId: AGING_SYSTEM_ACTOR.id,
+                actorRole: AGING_SYSTEM_ACTOR.role,
+                note: `Long-idle alert: ${daysInactive} days inactive.`,
+                timestamp,
+              })
+              const next: Project = {
+                ...project,
+                agingMilestone: 'alert',
+                updatedAt: timestamp,
+                auditLog: [...project.auditLog, transition],
+              }
+              notifications.push({ project: next, kind: 'aging-alert' })
+              return next
+            }
+
+            if (project.status === 'Idle' && phase === 'idle') {
+              if (!shouldApplyAgingMilestone(project.agingMilestone, 'idle')) {
+                return project
+              }
+              return { ...project, agingMilestone: 'idle' as AgingMilestone }
+            }
+
+            return project
+          }),
+        }))
+
+        for (const item of notifications) {
+          notify(item.project, item.kind, AGING_SYSTEM_ACTOR)
+        }
+      },
+
+      reactivateProject: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertStatusTransition(project.status, 'Active')
+
+        const canReactivate =
+          actor.role === 'Admin' ||
+          actor.role === 'GovernanceLead' ||
+          canActOnClosureSubmit(actor, project) ||
+          canOwnStack(project, actor)
+        if (!canReactivate) {
+          throw new Error(
+            'Only the submitter, owners, Governance Lead, or Admin can reactivate this project.',
+          )
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Development',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'InProgress',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Project reactivated — aging clock reset.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  ...activateProjectFields(p, timestamp),
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'reactivated', actor)
       },
 
       resetProjects: () => set({ projects: structuredClone(SEED_PROJECTS) }),

@@ -1,10 +1,12 @@
 import {
+  Bell,
   FolderKanban,
   GraduationCap,
   Info,
   LayoutDashboard,
   PlusCircle,
   Settings,
+  Table2,
   UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -34,6 +36,8 @@ const NAV_ITEMS: NavItemConfig[] = [
     roles: ['Submitter', 'BusinessAnalyst', 'Admin'],
   },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/ci-portal', label: 'CI Portal', icon: Table2 },
   { to: '/trainings', label: 'Training Catalog', icon: GraduationCap },
   { to: '/profile', label: 'Profile', icon: UserRound },
   { to: '/admin', label: 'Admin', icon: Settings, roles: ['Admin'] },
@@ -95,7 +99,7 @@ export function Sidebar({ onNavigate, className }: SidebarProps) {
 
       <div className="mt-auto flex items-center gap-1.5 rounded-md bg-stone-50 p-2.5 text-[11px] text-stone-600">
         <Info className="h-3.5 w-3.5 shrink-0" />
-        Demo Mode · Phase 0
+        Demo Mode · V3
       </div>
     </aside>
   )
