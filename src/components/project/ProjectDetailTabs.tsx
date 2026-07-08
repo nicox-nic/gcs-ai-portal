@@ -1,17 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
   Info,
   Play,
+  RefreshCw,
   Sparkles,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { RoleBadge } from '@/components/common/RoleBadge'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import { ComboCard, getDisplayedCombos } from '@/components/recommendations/RecommendationSections'
+import {
+  AlternativeToolCard,
+  ComboCard,
+  getDisplayedCombos,
+  ToolRankingCard,
+} from '@/components/recommendations/RecommendationSections'
+import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,6 +43,7 @@ import {
   getStageMeta,
   type StageTransitionOption,
 } from '@/lib/lifecycle'
+import { recommendCombos, recommendTools } from '@/lib/recommendationEngine'
 import {
   formatAuditAction,
   getUserById,
@@ -45,6 +53,8 @@ import {
 } from '@/lib/projectDisplay'
 import { comboMatchesStack } from '@/lib/toolStack'
 import { cn, formatDateTime, formatRelative, humanizeRole, humanizeStage } from '@/lib/utils'
+import { useCatalogStore } from '@/stores/catalogStore'
+import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, Tool, ToolCombo, Training, User } from '@/types'
 
 type ProjectTabsProps = {
@@ -294,6 +304,8 @@ export function ProjectOverviewTab({
             onRequestTransition={onRequestTransition}
           />
         </div>
+
+        <StatusGateActions project={project} currentUser={currentUser} />
       </div>
 
       <div className="flex flex-col gap-3 p-4">
@@ -454,13 +466,64 @@ export function ProjectLifecycleTab({
   )
 }
 
-export function ProjectRecommendationsTab({
+export function ProjectToolSelectionTab({
   project,
   tools,
   combos,
+  trainings,
+  currentUser,
   onCustomiseStack,
   onApplyCombo,
-}: Pick<ProjectTabsProps, 'project' | 'tools' | 'combos' | 'onCustomiseStack' | 'onApplyCombo'>) {
+}: Pick<
+  ProjectTabsProps,
+  | 'project'
+  | 'tools'
+  | 'combos'
+  | 'trainings'
+  | 'currentUser'
+  | 'onCustomiseStack'
+  | 'onApplyCombo'
+>) {
+  const setRecommendations = useProjectsStore((s) => s.setRecommendations)
+  const updateToolStack = useProjectsStore((s) => s.updateToolStack)
+  const submitForReview = useProjectsStore((s) => s.submitForReview)
+  const saveQualifiedDraft = useProjectsStore((s) => s.saveQualifiedDraft)
+  const catalogTrainings = useCatalogStore((s) => s.trainings)
+  const resolvedTrainings = trainings.length > 0 ? trainings : catalogTrainings
+
+  const editable =
+    project.status === 'Qualified' || project.status === 'QualifiedDraft'
+  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
+  const canEdit =
+    editable &&
+    currentUser !== null &&
+    (currentUser.role === 'Admin' ||
+      currentUser.id === project.submitterId ||
+      currentUser.role === 'DataEngineering' ||
+      currentUser.role === 'AIProgramManager')
+
+  const generateRecommendations = (force: boolean) => {
+    if (!force && project.recommendations.length > 0) return
+    const { top, alternatives } = recommendTools(
+      project.submission,
+      tools,
+      resolvedTrainings,
+    )
+    const rankedCombos = recommendCombos(project.submission, combos, tools)
+    const recommendedComboIds = rankedCombos
+      .filter((combo) => combo.matchScore >= 30)
+      .slice(0, 3)
+      .map((combo) => combo.id)
+    setRecommendations(project.id, top, alternatives, recommendedComboIds)
+  }
+
+  useEffect(() => {
+    if (!editable) return
+    if (project.recommendations.length > 0) return
+    generateRecommendations(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- generate once when empty post-qualification
+  }, [editable, project.id, project.recommendations.length])
+
   const displayedCombos = getDisplayedCombos(
     project.submission,
     combos,
@@ -468,22 +531,108 @@ export function ProjectRecommendationsTab({
     tools,
   )
 
+  const handleStackChange = (stack: Project['toolStack']) => {
+    if (!canEdit) return
+    try {
+      updateToolStack(project.id, stack)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update stack.')
+    }
+  }
+
+  const handleSubmitForReview = () => {
+    if (!currentUser) return
+    try {
+      submitForReview(project.id, currentUser)
+      toast.success('Submitted for review.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not submit for review.')
+    }
+  }
+
+  const handleSaveDraft = () => {
+    if (!currentUser) return
+    try {
+      if (project.status === 'Qualified') {
+        saveQualifiedDraft(project.id, currentUser)
+      }
+      toast.success('Draft saved.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save draft.')
+    }
+  }
+
   return (
     <div className="space-y-4 p-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-medium text-stone-900">Stored recommendations</div>
+          <div className="text-sm font-medium text-stone-900">Tool Selection</div>
           <p className="text-xs text-stone-500">
-            Read-only snapshot from submission scoring. Customise your stack to update the project.
+            {editable
+              ? 'Generate recommendations from the live catalog, pick a combo or customise the stack, then submit for review.'
+              : 'Read-only stack and rationale after submission.'}
           </p>
         </div>
-        <Button
-          type="button"
-          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
-          onClick={onCustomiseStack}
-        >
-          Re-open Customise Stack
-        </Button>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 text-xs"
+              onClick={() => {
+                generateRecommendations(true)
+                toast.success('Recommendations regenerated.')
+              }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-generate
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 text-xs"
+              onClick={onCustomiseStack}
+            >
+              Customise Stack
+            </Button>
+            {project.status === 'Qualified' && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-8 text-xs"
+                onClick={handleSaveDraft}
+              >
+                Save draft
+              </Button>
+            )}
+            <Button
+              type="button"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+              onClick={handleSubmitForReview}
+            >
+              Submit for review
+            </Button>
+          </div>
+        )}
+        {editable && !canEdit && currentUser && (
+          <div className="flex items-start gap-1.5 rounded-md border-[0.5px] border-[#CECBF6] bg-[#EEEDFE] px-2.5 py-2 text-[11px] text-[#26215C]">
+            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            You are viewing as {humanizeRole(currentUser.role)}. Only the submitter, Data
+            Engineering, AI Program Manager, or Admin can select tools.
+          </div>
+        )}
+      </div>
+
+      {(project.status === 'ForEHSReview' ||
+        project.status === 'Submitted' ||
+        project.status === 'Rejected' ||
+        project.status === 'EHSRejected') && (
+        <StatusGateActions project={project} currentUser={currentUser} />
+      )}
+
+      <div className="rounded-md bg-stone-50 px-3 py-2">
+        <span className="mb-1 block text-[10px] text-stone-500">Current stack</span>
+        <ToolStackChips toolStack={project.toolStack} tools={tools} showLabels />
       </div>
 
       {displayedCombos.length > 0 && (
@@ -495,7 +644,10 @@ export function ProjectRecommendationsTab({
               tools={tools}
               index={index}
               selected={comboMatchesStack(project.toolStack, combo)}
-              onSelect={() => onApplyCombo(combo.id)}
+              onSelect={() => {
+                if (!canEdit) return
+                onApplyCombo(combo.id)
+              }}
             />
           ))}
         </div>
@@ -506,34 +658,68 @@ export function ProjectRecommendationsTab({
           <Sparkles className="h-4 w-4 text-indigo-600" />
           Top tool rankings
         </div>
-        <div className="mb-3">
-          <span className="mb-1 block text-[10px] text-stone-500">Current stack</span>
-          <ToolStackChips toolStack={project.toolStack} tools={tools} showLabels />
-        </div>
-        <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
-          {project.recommendations.map((rec) => {
-            const tool = tools.find((item) => item.id === rec.toolId)
-            if (!tool) return null
-            return (
-              <div
-                key={rec.toolId}
-                className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]"
-              >
-                <div className="font-medium text-stone-900">
-                  #{rec.rank} {tool.name}
+        {canEdit ? (
+          <div className="mb-3.5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+            {project.recommendations.map((recommendation) => {
+              const tool = tools.find((item) => item.id === recommendation.toolId)
+              if (!tool) return null
+              return (
+                <ToolRankingCard
+                  key={recommendation.toolId}
+                  recommendation={recommendation}
+                  tool={tool}
+                  trainings={resolvedTrainings}
+                  stack={project.toolStack}
+                  onStackChange={handleStackChange}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+            {project.recommendations.map((rec) => {
+              const tool = tools.find((item) => item.id === rec.toolId)
+              if (!tool) return null
+              return (
+                <div
+                  key={rec.toolId}
+                  className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]"
+                >
+                  <div className="font-medium text-stone-900">
+                    #{rec.rank} {tool.name}
+                  </div>
+                  <div className="text-stone-500">{Math.round(rec.confidence * 100)}% confidence</div>
+                  <p className="mt-1 text-stone-600">{rec.rationale}</p>
                 </div>
-                <div className="text-stone-500">
-                  {Math.round(rec.confidence * 100)}% confidence
-                </div>
-                <p className="mt-1 text-stone-600">{rec.rationale}</p>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        )}
+
+        {canEdit && project.alternativeRecommendations.length > 0 && (
+          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {project.alternativeRecommendations.map((recommendation) => {
+              const tool = tools.find((item) => item.id === recommendation.toolId)
+              if (!tool) return null
+              return (
+                <AlternativeToolCard
+                  key={recommendation.toolId}
+                  recommendation={recommendation}
+                  tool={tool}
+                  stack={project.toolStack}
+                  onStackChange={handleStackChange}
+                />
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
 }
+
+/** @deprecated Use ProjectToolSelectionTab — kept as alias during Phase 4 rename. */
+export const ProjectRecommendationsTab = ProjectToolSelectionTab
 
 export function ProjectBenefitsTab({
   project,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AdvanceStageDialog } from '@/components/dialogs/AdvanceStageDialog'
 import { CustomiseStackDialog } from '@/components/dialogs/CustomiseStackDialog'
@@ -10,7 +10,7 @@ import {
   ProjectBenefitsTab,
   ProjectLifecycleTab,
   ProjectOverviewTab,
-  ProjectRecommendationsTab,
+  ProjectToolSelectionTab,
 } from '@/components/project/ProjectDetailTabs'
 import {
   ProjectQualificationTab,
@@ -38,8 +38,21 @@ function showBenefitsTab(project: {
   )
 }
 
+function canCustomiseStack(
+  project: { status: string; submitterId: string },
+  currentUser: { id: string; role: string } | null,
+): boolean {
+  if (!currentUser) return false
+  if (project.status !== 'Qualified' && project.status !== 'QualifiedDraft') return false
+  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
+  if (currentUser.role === 'Admin') return true
+  if (currentUser.id === project.submitterId) return true
+  return currentUser.role === 'DataEngineering' || currentUser.role === 'AIProgramManager'
+}
+
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const currentUser = useAuthStore((state) => state.currentUser)
   const project = useProjectsStore((state) =>
     id ? state.projects.find((item) => item.id === id) : undefined,
@@ -56,13 +69,22 @@ export function ProjectDetailPage() {
   const combos = useCatalogStore((state) => state.combos)
   const trainings = useCatalogStore((state) => state.trainings)
 
-  const [activeTab, setActiveTab] = useState('overview')
+  const tabFromUrl = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    tabFromUrl === 'tool-selection' || tabFromUrl === 'recommendations'
+      ? 'tool-selection'
+      : 'overview',
+  )
   const [customiseOpen, setCustomiseOpen] = useState(false)
   const [pendingTransition, setPendingTransition] = useState<StageTransitionOption | null>(null)
 
   useEffect(() => {
+    if (tabFromUrl === 'tool-selection' || tabFromUrl === 'recommendations') {
+      setActiveTab('tool-selection')
+      return
+    }
     setActiveTab('overview')
-  }, [id])
+  }, [id, tabFromUrl])
 
   if (!id) {
     return <Navigate to="/projects" replace />
@@ -71,6 +93,8 @@ export function ProjectDetailPage() {
   if (!project) {
     return <Navigate to="/projects" replace />
   }
+
+  const stackEditable = canCustomiseStack(project, currentUser)
 
   const handleTransition = (note: string) => {
     if (!pendingTransition || !currentUser) return
@@ -110,6 +134,7 @@ export function ProjectDetailPage() {
         project={project}
         tools={tools}
         onCustomiseStack={() => setCustomiseOpen(true)}
+        canCustomiseStack={stackEditable}
       />
 
       <div className="overflow-hidden rounded-lg border-[0.5px] border-stone-200 bg-white">
@@ -123,7 +148,7 @@ export function ProjectDetailPage() {
                 label: 'Qualification',
                 hidden: !showQualificationTab(project.status),
               },
-              { id: 'recommendations', label: 'Recommendations' },
+              { id: 'tool-selection', label: 'Tool Selection' },
               { id: 'benefits', label: 'Benefits & Closure', hidden: !showBenefitsTab(project) },
               {
                 id: 'audit',
@@ -194,11 +219,13 @@ export function ProjectDetailPage() {
             </TabsContent>
           )}
 
-          <TabsContent value="recommendations" className="m-0">
-            <ProjectRecommendationsTab
+          <TabsContent value="tool-selection" className="m-0">
+            <ProjectToolSelectionTab
               project={project}
               tools={tools}
               combos={combos}
+              trainings={trainings}
+              currentUser={currentUser}
               onCustomiseStack={() => setCustomiseOpen(true)}
               onApplyCombo={(comboId) => {
                 try {
@@ -221,7 +248,9 @@ export function ProjectDetailPage() {
                     reportBenefits(project.id, hours)
                     toast.success('Benefits submitted for sponsor validation.')
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : 'Could not report benefits.')
+                    toast.error(
+                      error instanceof Error ? error.message : 'Could not report benefits.',
+                    )
                   }
                 }}
                 onValidateBenefits={() => {
@@ -229,7 +258,9 @@ export function ProjectDetailPage() {
                     validateBenefits(project.id)
                     toast.success('Benefits validated.')
                   } catch (error) {
-                    toast.error(error instanceof Error ? error.message : 'Could not validate benefits.')
+                    toast.error(
+                      error instanceof Error ? error.message : 'Could not validate benefits.',
+                    )
                   }
                 }}
               />

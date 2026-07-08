@@ -21,11 +21,20 @@ type ProjectHeaderCardProps = {
   project: Project
   tools: Tool[]
   onCustomiseStack: () => void
+  canCustomiseStack?: boolean
 }
 
-export function ProjectHeaderCard({ project, tools, onCustomiseStack }: ProjectHeaderCardProps) {
+export function ProjectHeaderCard({
+  project,
+  tools,
+  onCustomiseStack,
+  canCustomiseStack = false,
+}: ProjectHeaderCardProps) {
   const progress = stageProgress(project)
   const sponsorName = project.sponsorId ? getUserDisplayName(project.sponsorId) : 'Unassigned'
+  const showEhsHint =
+    (project.status === 'Submitted' || project.status === 'ForEHSReview') &&
+    Boolean(project.ehsCoordinatorId)
 
   return (
     <>
@@ -38,6 +47,11 @@ export function ProjectHeaderCard({ project, tools, onCustomiseStack }: ProjectH
               <span className="rounded-sm bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#3C3489]">
                 {humanizeStage(project.currentStage)}
               </span>
+              {showEhsHint && (
+                <span className="rounded-sm border-[0.5px] border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
+                  EHS review required
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-4 text-[11px] text-stone-500">
               <span className="inline-flex items-center gap-1">
@@ -67,14 +81,16 @@ export function ProjectHeaderCard({ project, tools, onCustomiseStack }: ProjectH
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </Button>
-            <Button
-              type="button"
-              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
-              onClick={onCustomiseStack}
-            >
-              <Layers className="h-3.5 w-3.5" />
-              Customise Stack
-            </Button>
+            {canCustomiseStack && (
+              <Button
+                type="button"
+                className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+                onClick={onCustomiseStack}
+              >
+                <Layers className="h-3.5 w-3.5" />
+                Customise Stack
+              </Button>
+            )}
           </div>
         </div>
 

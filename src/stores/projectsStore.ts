@@ -49,6 +49,13 @@ type QualifyPayload = {
 
 const QUALIFY_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
 const CANCEL_GOVERNANCE_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
+const SUBMISSION_REVIEW_ROLES: User['role'][] = [
+  'GovernanceLead',
+  'AIProgramManager',
+  'Admin',
+]
+const EHS_ASSIGN_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
+const EHS_ACTION_ROLES: User['role'][] = ['EHS', 'Admin']
 
 type ProjectsStore = {
   projects: Project[]
@@ -78,6 +85,14 @@ type ProjectsStore = {
   rejectQualification: (projectId: string, reason: string, actor: User) => void
   resubmitForAssessment: (projectId: string, actor: User) => void
   cancelProject: (projectId: string, reason: string, actor: User) => void
+  submitForReview: (projectId: string, actor: User) => void
+  saveQualifiedDraft: (projectId: string, actor: User) => void
+  assignEhsCoordinator: (projectId: string, ehsUserId: string | null, actor: User) => void
+  approveSubmission: (projectId: string, actor: User, note?: string) => void
+  rejectSubmission: (projectId: string, reason: string, actor: User) => void
+  ehsApprove: (projectId: string, actor: User, note?: string) => void
+  ehsReject: (projectId: string, reason: string, actor: User) => void
+  resubmitAfterRejection: (projectId: string, actor: User) => void
   updateProject: (projectId: string, patch: Partial<Project>) => void
   reportBenefits: (projectId: string, hours: number) => void
   validateBenefits: (projectId: string) => void
@@ -121,7 +136,8 @@ function appendTransition(
 }
 
 /**
- * Interim stage→status mappings until remaining gate screens land.
+ * Stage→status side effects for ISO lifecycle advances.
+ * Active is gated via approveSubmission / ehsApprove (Phase 4) — no auto-Active from stage advance.
  * Completed arrives only from sponsor approval (Phase 5) — no Use→Completed auto-rule.
  * Qualification is explicit via qualifyProject (Phase 3) — no Assessment→Qualified auto-rule.
  */
@@ -131,21 +147,8 @@ function applyStatusSideEffects(
   toStatus: StageStatus,
 ): Pick<Project, 'status' | 'activeSince' | 'lastActivityAt'> {
   let status = project.status
-  let activeSince = project.activeSince
+  const activeSince = project.activeSince
   const lastActivityAt = nowIso()
-
-  // TODO(V3 Phase 4): gate Active behind EHS review instead of first post-Assessment stage
-  const preActive: ProjectStatus[] = ['Qualified', 'QualifiedDraft', 'Submitted']
-  if (
-    toStage !== 'Assessment' &&
-    toStatus === 'InProgress' &&
-    preActive.includes(status)
-  ) {
-    status = 'Active'
-    if (!activeSince) {
-      activeSince = lastActivityAt
-    }
-  }
 
   if (toStage === 'Decommissioning' && toStatus === 'Completed') {
     status = 'Deactivated'
@@ -166,6 +169,33 @@ function assertCanQualify(actor: User): void {
     throw new Error(
       `Only ${humanizeRole('GovernanceLead')}, ${humanizeRole('RiskCompliance')}, or Admin can qualify projects.`,
     )
+  }
+}
+
+function assertRole(actor: User, roles: User['role'][], message: string): void {
+  if (!roles.includes(actor.role)) {
+    throw new Error(message)
+  }
+}
+
+function canSelectTools(actor: User, project: Project): boolean {
+  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
+  if (actor.role === 'Admin') return true
+  if (actor.id === project.submitterId) return true
+  return actor.role === 'DataEngineering' || actor.role === 'AIProgramManager'
+}
+
+/** Stamp Active + Development InProgress. Called by approveSubmission (no-EHS) and ehsApprove. */
+function activateProjectFields(project: Project, timestamp: string): Partial<Project> {
+  return {
+    status: 'Active' as const,
+    activeSince: project.activeSince ?? timestamp,
+    lastActivityAt: timestamp,
+    currentStage: 'Development' as const,
+    stageStatus: {
+      ...project.stageStatus,
+      Development: 'InProgress',
+    },
   }
 }
 
@@ -539,6 +569,311 @@ export const useProjectsStore = create<ProjectsStore>()(
               ? {
                   ...p,
                   status: 'Cancelled' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      submitForReview: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSelectTools(actor, project)) {
+          throw new Error(
+            'Only the submitter, Data Engineering, AI Program Manager, or Admin can submit for review.',
+          )
+        }
+        assertStatusTransition(project.status, 'Submitted')
+        if (project.toolStack.length === 0) {
+          throw new Error('Select a tool stack before submitting for review.')
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Tool stack submitted for second review.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Submitted' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      saveQualifiedDraft: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSelectTools(actor, project)) {
+          throw new Error(
+            'Only the submitter, Data Engineering, AI Program Manager, or Admin can save a qualified draft.',
+          )
+        }
+        assertStatusTransition(project.status, 'QualifiedDraft')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Saved as qualified draft (tool selection in progress).',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'QualifiedDraft' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      assignEhsCoordinator: (projectId, ehsUserId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          EHS_ASSIGN_ROLES,
+          `Only ${humanizeRole('GovernanceLead')}, ${humanizeRole('AIProgramManager')}, or Admin can assign an EHS coordinator.`,
+        )
+
+        const timestamp = nowIso()
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  ehsCoordinatorId: ehsUserId,
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      approveSubmission: (projectId, actor, note) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          SUBMISSION_REVIEW_ROLES,
+          `Only ${humanizeRole('GovernanceLead')}, ${humanizeRole('AIProgramManager')}, or Admin can approve submissions.`,
+        )
+
+        const nextStatus: ProjectStatus = project.ehsCoordinatorId
+          ? 'ForEHSReview'
+          : 'Active'
+        assertStatusTransition(project.status, nextStatus)
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: nextStatus === 'Active' ? 'Development' : project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus:
+            nextStatus === 'Active'
+              ? 'InProgress'
+              : project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note:
+            note?.trim() ||
+            (nextStatus === 'ForEHSReview'
+              ? 'Submission approved — routed to EHS review.'
+              : 'Submission approved — project activated (no EHS coordinator).'),
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== projectId) return p
+            if (nextStatus === 'Active') {
+              return {
+                ...p,
+                ...activateProjectFields(p, timestamp),
+                auditLog: [...p.auditLog, transition],
+                updatedAt: timestamp,
+              }
+            }
+            return {
+              ...p,
+              status: 'ForEHSReview' as const,
+              auditLog: [...p.auditLog, transition],
+              updatedAt: timestamp,
+              lastActivityAt: timestamp,
+            }
+          }),
+        }))
+      },
+
+      rejectSubmission: (projectId, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          SUBMISSION_REVIEW_ROLES,
+          `Only ${humanizeRole('GovernanceLead')}, ${humanizeRole('AIProgramManager')}, or Admin can reject submissions.`,
+        )
+        assertStatusTransition(project.status, 'Rejected')
+        if (!reason.trim()) throw new Error('A rejection reason is required.')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Submission rejected: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Rejected' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      ehsApprove: (projectId, actor, note) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          EHS_ACTION_ROLES,
+          'Only EHS or Admin can approve EHS review.',
+        )
+        assertStatusTransition(project.status, 'Active')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Development',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'InProgress',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: note?.trim() || 'EHS review approved — project activated.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  ...activateProjectFields(p, timestamp),
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      ehsReject: (projectId, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          EHS_ACTION_ROLES,
+          'Only EHS or Admin can reject EHS review.',
+        )
+        assertStatusTransition(project.status, 'EHSRejected')
+        if (!reason.trim()) throw new Error('An EHS rejection reason is required.')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `EHS rejected: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'EHSRejected' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      resubmitAfterRejection: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSelectTools(actor, project)) {
+          throw new Error(
+            'Only the submitter, Data Engineering, AI Program Manager, or Admin can resubmit after rejection.',
+          )
+        }
+        assertStatusTransition(project.status, 'Submitted')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Revised and resubmitted after rejection.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Submitted' as const,
                   auditLog: [...p.auditLog, transition],
                   updatedAt: timestamp,
                   lastActivityAt: timestamp,

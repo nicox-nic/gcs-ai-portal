@@ -75,6 +75,14 @@ function RoleCallout() {
       className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
       icon: ShieldCheck,
     }
+  } else if (currentUser.role === 'EHS' && stats.pendingEhsReview > 0) {
+    content = {
+      text: 'EHS review queue:',
+      suffix: ' awaiting your clearance',
+      count: stats.pendingEhsReview,
+      className: 'border-amber-200 bg-amber-50 text-amber-900',
+      icon: ShieldCheck,
+    }
   } else if (currentUser.role === 'Sponsor' && stats.awaitingValidation > 0) {
     content = {
       text: 'Awaiting your validation:',
@@ -97,6 +105,13 @@ function RoleCallout() {
 
   const Icon = content.icon
 
+  const reviewPath =
+    currentUser.role === 'GovernanceLead' || currentUser.role === 'RiskCompliance'
+      ? '/projects?status=ForAssessment'
+      : currentUser.role === 'EHS'
+        ? '/projects?status=ForEHSReview'
+        : '/projects'
+
   return (
     <div
       className={cn(
@@ -117,13 +132,7 @@ function RoleCallout() {
       <button
         type="button"
         className="ml-auto text-[11px] font-medium hover:underline"
-        onClick={() =>
-          navigate(
-            currentUser.role === 'GovernanceLead' || currentUser.role === 'RiskCompliance'
-              ? '/projects?status=ForAssessment'
-              : '/projects',
-          )
-        }
+        onClick={() => navigate(reviewPath)}
       >
         Review →
       </button>

@@ -7,7 +7,6 @@ import { WizardFormFields } from '@/components/submission/WizardFormFields'
 import { WizardStepper } from '@/components/submission/WizardStepper'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { recommendCombos, recommendTools } from '@/lib/recommendationEngine'
 import {
   EMPTY_WIZARD_FORM,
   WIZARD_STEPS,
@@ -17,7 +16,6 @@ import {
   type WizardFormState,
 } from '@/lib/submissionWizard'
 import { useAuthStore } from '@/stores/authStore'
-import { useCatalogStore } from '@/stores/catalogStore'
 import { getProfileDefaults } from '@/stores/profileStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Group, Role, Site } from '@/types'
@@ -29,11 +27,7 @@ export function ManualSubmitPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
   const createProject = useProjectsStore((state) => state.createProject)
   const updateProject = useProjectsStore((state) => state.updateProject)
-  const setRecommendations = useProjectsStore((state) => state.setRecommendations)
   const submitProject = useProjectsStore((state) => state.submitProject)
-  const tools = useCatalogStore((state) => state.tools)
-  const trainings = useCatalogStore((state) => state.trainings)
-  const combos = useCatalogStore((state) => state.combos)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [form, setForm] = useState<WizardFormState>(() => ({
@@ -140,19 +134,9 @@ export function ManualSubmitPage() {
 
     try {
       const projectId = persistDraft()
-      const submission = buildSubmission(form)
-      // TODO(V3 Phase 4): relocate tool selection to post-qualification
-      const { top, alternatives } = recommendTools(submission, tools, trainings)
-      const rankedCombos = recommendCombos(submission, combos, tools)
-      const recommendedComboIds = rankedCombos
-        .filter((combo) => combo.matchScore >= 30)
-        .slice(0, 3)
-        .map((combo) => combo.id)
-
-      setRecommendations(projectId, top, alternatives, recommendedComboIds)
       submitProject(projectId)
-      toast.success('Project submitted — recommendations are ready.')
-      navigate(`/projects/${projectId}/recommendations`)
+      toast.success('Submitted for assessment.')
+      navigate(`/projects/${projectId}`)
     } catch (submitError) {
       toast.error(submitError instanceof Error ? submitError.message : 'Submission failed.')
     }
@@ -182,7 +166,7 @@ export function ManualSubmitPage() {
 
       <PageHeader
         title="Submit New AI Project"
-        subtitle="Complete all 4 steps to submit your AI initiative for review and tool recommendations."
+        subtitle="Complete all 4 steps to submit your AI initiative for qualification assessment."
         className="mb-5"
       />
 
@@ -219,7 +203,7 @@ export function ManualSubmitPage() {
                 onClick={handleNext}
               >
                 {currentStep === WIZARD_STEPS.length
-                  ? 'Submit & See Recommendations'
+                  ? 'Submit for assessment'
                   : `Next: ${nextStepLabel} →`}
               </Button>
             </div>

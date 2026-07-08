@@ -98,6 +98,7 @@ export type DashboardStats = {
   completedCount: number
   hoursSaved: number
   pendingQualification: number
+  pendingEhsReview: number
   awaitingValidation: number
   highRiskProjects: number
   lifecycleByStage: LifecycleStageDatum[]
@@ -169,6 +170,7 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     .reduce((sum, p) => sum + (p.reportedBenefitHours ?? 0), 0)
 
   const pendingQualification = projects.filter((p) => p.status === 'ForAssessment').length
+  const pendingEhsReview = projects.filter((p) => p.status === 'ForEHSReview').length
 
   const awaitingValidation = projects.filter(
     (p) =>
@@ -318,6 +320,7 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     completedCount,
     hoursSaved,
     pendingQualification,
+    pendingEhsReview,
     awaitingValidation,
     highRiskProjects,
     lifecycleByStage,

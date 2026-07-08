@@ -1,0 +1,324 @@
+import { useMemo, useState } from 'react'
+import { Info, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { SEED_USERS } from '@/data/seedRoles'
+import { getUserDisplayName } from '@/lib/projectDisplay'
+import { humanizeRole, cn } from '@/lib/utils'
+import { useProjectsStore } from '@/stores/projectsStore'
+import type { Project, User } from '@/types'
+
+const REVIEW_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
+const EHS_ROLES: User['role'][] = ['EHS', 'Admin']
+
+type GateDialog =
+  | { kind: 'approve' }
+  | { kind: 'reject' }
+  | { kind: 'ehsApprove' }
+  | { kind: 'ehsReject' }
+  | { kind: 'resubmit' }
+  | null
+
+type StatusGateActionsProps = {
+  project: Project
+  currentUser: User | null
+}
+
+function canOwnTools(user: User, project: Project): boolean {
+  if (user.role === 'Admin') return true
+  if (user.id === project.submitterId) return true
+  return user.role === 'DataEngineering' || user.role === 'AIProgramManager'
+}
+
+export function StatusGateActions({ project, currentUser }: StatusGateActionsProps) {
+  const assignEhsCoordinator = useProjectsStore((s) => s.assignEhsCoordinator)
+  const approveSubmission = useProjectsStore((s) => s.approveSubmission)
+  const rejectSubmission = useProjectsStore((s) => s.rejectSubmission)
+  const ehsApprove = useProjectsStore((s) => s.ehsApprove)
+  const ehsReject = useProjectsStore((s) => s.ehsReject)
+  const resubmitAfterRejection = useProjectsStore((s) => s.resubmitAfterRejection)
+
+  const [dialog, setDialog] = useState<GateDialog>(null)
+  const [reason, setReason] = useState('')
+  const [ehsPick, setEhsPick] = useState<string>(project.ehsCoordinatorId ?? '__none__')
+
+  const ehsUsers = useMemo(() => SEED_USERS.filter((u) => u.role === 'EHS'), [])
+
+  const canReview = currentUser !== null && REVIEW_ROLES.includes(currentUser.role)
+  const canEhs = currentUser !== null && EHS_ROLES.includes(currentUser.role)
+  const canResubmit = currentUser !== null && canOwnTools(currentUser, project)
+
+  const relevantStatuses = new Set([
+    'Submitted',
+    'ForEHSReview',
+    'Rejected',
+    'EHSRejected',
+  ])
+  if (!relevantStatuses.has(project.status)) {
+    return null
+  }
+
+  const runSafe = (fn: () => void, success: string) => {
+    try {
+      fn()
+      toast.success(success)
+      setDialog(null)
+      setReason('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Action failed.')
+    }
+  }
+
+  const awaitingNote = (() => {
+    if (project.status === 'Submitted' && !canReview) {
+      return `Awaiting ${humanizeRole('GovernanceLead')} / ${humanizeRole('AIProgramManager')} review.`
+    }
+    if (project.status === 'ForEHSReview' && !canEhs) {
+      return 'Awaiting EHS review.'
+    }
+    if (
+      (project.status === 'Rejected' || project.status === 'EHSRejected') &&
+      !canResubmit
+    ) {
+      return 'Awaiting submitter revision and resubmit.'
+    }
+    return null
+  })()
+
+  return (
+    <div className="mb-3.5 border-t-[0.5px] border-stone-200 pt-3.5">
+      <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+        <ShieldCheck className="h-3.5 w-3.5 text-indigo-700" />
+        Status gate actions
+        {project.status === 'Submitted' && (
+          <span
+            className={cn(
+              'ml-1 rounded-sm border-[0.5px] px-1.5 py-0.5 text-[10px] font-semibold uppercase',
+              project.ehsCoordinatorId
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-stone-200 bg-stone-50 text-stone-600',
+            )}
+          >
+            {project.ehsCoordinatorId ? 'EHS required' : 'EHS optional'}
+          </span>
+        )}
+      </div>
+
+      {project.status === 'Submitted' && project.ehsCoordinatorId && (
+        <p className="mb-2 text-[11px] text-stone-600">
+          EHS coordinator: {getUserDisplayName(project.ehsCoordinatorId)} — approval will route to
+          EHS review.
+        </p>
+      )}
+
+      {awaitingNote && (
+        <div className="mb-2.5 flex items-start gap-1.5 rounded-md border-[0.5px] border-[#CECBF6] bg-[#EEEDFE] px-2.5 py-2 text-[11px] text-[#26215C]">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {awaitingNote}
+        </div>
+      )}
+
+      {project.status === 'Submitted' && canReview && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            onClick={() => {
+              setEhsPick(project.ehsCoordinatorId ?? '__none__')
+              setDialog({ kind: 'approve' })
+            }}
+          >
+            Approve
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="h-8 text-xs"
+            onClick={() => setDialog({ kind: 'reject' })}
+          >
+            Reject
+          </Button>
+        </div>
+      )}
+
+      {project.status === 'ForEHSReview' && canEhs && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            onClick={() => setDialog({ kind: 'ehsApprove' })}
+          >
+            EHS Approve
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="h-8 text-xs"
+            onClick={() => setDialog({ kind: 'ehsReject' })}
+          >
+            EHS Reject
+          </Button>
+        </div>
+      )}
+
+      {(project.status === 'Rejected' || project.status === 'EHSRejected') && canResubmit && (
+        <Button
+          type="button"
+          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+          onClick={() => setDialog({ kind: 'resubmit' })}
+        >
+          Revise & resubmit
+        </Button>
+      )}
+
+      <ConfirmDialog
+        open={dialog?.kind === 'approve'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Approve submission"
+        description={
+          <div className="space-y-3 text-left">
+            <p>
+              Optionally assign an EHS coordinator. If assigned, the project goes to{' '}
+              <strong>For EHS Review</strong>; if left blank, it becomes <strong>Active</strong>.
+            </p>
+            <div>
+              <Label className="mb-1.5 block text-[11px] text-stone-600">EHS coordinator</Label>
+              <Select value={ehsPick} onValueChange={setEhsPick}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="None — skip EHS" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None — skip EHS</SelectItem>
+                  {ehsUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        }
+        confirmLabel="Approve"
+        onConfirm={() => {
+          if (!currentUser) return
+          const ehsId = ehsPick === '__none__' ? null : ehsPick
+          runSafe(() => {
+            assignEhsCoordinator(project.id, ehsId, currentUser)
+            approveSubmission(project.id, currentUser)
+          }, ehsId ? 'Routed to EHS review.' : 'Project activated.')
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'reject'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialog(null)
+            setReason('')
+          }
+        }}
+        title="Reject submission"
+        description={
+          <div className="space-y-2 text-left">
+            <p>Provide a reason the submitter can act on.</p>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] text-xs"
+              placeholder="Rejection reason…"
+            />
+          </div>
+        }
+        confirmLabel="Reject"
+        variant="destructive"
+        onConfirm={() => {
+          if (!currentUser) return
+          if (!reason.trim()) {
+            toast.error('A rejection reason is required.')
+            return
+          }
+          runSafe(
+            () => rejectSubmission(project.id, reason, currentUser),
+            'Submission rejected.',
+          )
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'ehsApprove'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="EHS approve"
+        description="Confirm EHS clearance. The project will become Active and Development will start."
+        confirmLabel="EHS Approve"
+        onConfirm={() => {
+          if (!currentUser) return
+          runSafe(() => ehsApprove(project.id, currentUser), 'EHS approved — project activated.')
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'ehsReject'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialog(null)
+            setReason('')
+          }
+        }}
+        title="EHS reject"
+        description={
+          <div className="space-y-2 text-left">
+            <p>Provide the EHS rejection reason.</p>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] text-xs"
+              placeholder="EHS rejection reason…"
+            />
+          </div>
+        }
+        confirmLabel="EHS Reject"
+        variant="destructive"
+        onConfirm={() => {
+          if (!currentUser) return
+          if (!reason.trim()) {
+            toast.error('An EHS rejection reason is required.')
+            return
+          }
+          runSafe(() => ehsReject(project.id, reason, currentUser), 'EHS rejected.')
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'resubmit'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Revise & resubmit"
+        description="Return this project to Submitted for another review cycle. Ensure the tool stack reflects any required changes."
+        confirmLabel="Resubmit"
+        onConfirm={() => {
+          if (!currentUser) return
+          runSafe(
+            () => resubmitAfterRejection(project.id, currentUser),
+            'Resubmitted for review.',
+          )
+        }}
+      />
+    </div>
+  )
+}
