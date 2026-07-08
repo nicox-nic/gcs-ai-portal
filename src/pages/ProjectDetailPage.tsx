@@ -12,6 +12,10 @@ import {
   ProjectOverviewTab,
   ProjectRecommendationsTab,
 } from '@/components/project/ProjectDetailTabs'
+import {
+  ProjectQualificationTab,
+  showQualificationTab,
+} from '@/components/project/ProjectQualificationTab'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -44,6 +48,10 @@ export function ProjectDetailPage() {
   const applyCombo = useProjectsStore((state) => state.applyCombo)
   const reportBenefits = useProjectsStore((state) => state.reportBenefits)
   const validateBenefits = useProjectsStore((state) => state.validateBenefits)
+  const qualifyProject = useProjectsStore((state) => state.qualifyProject)
+  const rejectQualification = useProjectsStore((state) => state.rejectQualification)
+  const resubmitForAssessment = useProjectsStore((state) => state.resubmitForAssessment)
+  const cancelProject = useProjectsStore((state) => state.cancelProject)
   const tools = useCatalogStore((state) => state.tools)
   const combos = useCatalogStore((state) => state.combos)
   const trainings = useCatalogStore((state) => state.trainings)
@@ -110,6 +118,11 @@ export function ProjectDetailPage() {
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'lifecycle', label: 'Lifecycle' },
+              {
+                id: 'qualification',
+                label: 'Qualification',
+                hidden: !showQualificationTab(project.status),
+              },
               { id: 'recommendations', label: 'Recommendations' },
               { id: 'benefits', label: 'Benefits & Closure', hidden: !showBenefitsTab(project) },
               {
@@ -155,6 +168,31 @@ export function ProjectDetailPage() {
               onRequestTransition={setPendingTransition}
             />
           </TabsContent>
+
+          {showQualificationTab(project.status) && (
+            <TabsContent value="qualification" className="m-0">
+              <ProjectQualificationTab
+                project={project}
+                currentUser={currentUser}
+                onQualify={(payload) => {
+                  if (!currentUser) return
+                  qualifyProject(project.id, payload, currentUser, '')
+                }}
+                onReject={(reason) => {
+                  if (!currentUser) return
+                  rejectQualification(project.id, reason, currentUser)
+                }}
+                onCancel={(reason) => {
+                  if (!currentUser) return
+                  cancelProject(project.id, reason, currentUser)
+                }}
+                onResubmit={() => {
+                  if (!currentUser) return
+                  resubmitForAssessment(project.id, currentUser)
+                }}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="recommendations" className="m-0">
             <ProjectRecommendationsTab

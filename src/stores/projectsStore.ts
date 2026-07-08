@@ -7,6 +7,8 @@ import {
   getStageMeta,
   isAllowedTransition,
 } from '@/lib/lifecycle'
+import { canQualify } from '@/lib/qualificationLogic'
+import { getAllowedStatusTransitions } from '@/lib/projectStatus'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
 import type {
@@ -14,7 +16,11 @@ import type {
   LifecycleStage,
   Project,
   ProjectStatus,
+  ProjectTier,
+  QualificationAssessment,
+  ReadinessAssessment,
   Recommendation,
+  RewardCategory,
   Site,
   StageStatus,
   StageTransition,
@@ -32,6 +38,17 @@ type CreateProjectInput = {
   submission: Submission
   intakeMode?: 'manual' | 'assisted'
 }
+
+type QualifyPayload = {
+  readiness: ReadinessAssessment
+  qualification: QualificationAssessment
+  tier: ProjectTier
+  tierRationale: string
+  rewardCategory: RewardCategory
+}
+
+const QUALIFY_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
+const CANCEL_GOVERNANCE_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
 
 type ProjectsStore = {
   projects: Project[]
@@ -52,6 +69,15 @@ type ProjectsStore = {
     actor: User,
     note: string,
   ) => void
+  qualifyProject: (
+    projectId: string,
+    payload: QualifyPayload,
+    actor: User,
+    note: string,
+  ) => void
+  rejectQualification: (projectId: string, reason: string, actor: User) => void
+  resubmitForAssessment: (projectId: string, actor: User) => void
+  cancelProject: (projectId: string, reason: string, actor: User) => void
   updateProject: (projectId: string, patch: Partial<Project>) => void
   reportBenefits: (projectId: string, hours: number) => void
   validateBenefits: (projectId: string) => void
@@ -95,8 +121,9 @@ function appendTransition(
 }
 
 /**
- * Interim stage→status mappings until gate screens land.
+ * Interim stage→status mappings until remaining gate screens land.
  * Completed arrives only from sponsor approval (Phase 5) — no Use→Completed auto-rule.
+ * Qualification is explicit via qualifyProject (Phase 3) — no Assessment→Qualified auto-rule.
  */
 function applyStatusSideEffects(
   project: Project,
@@ -106,11 +133,6 @@ function applyStatusSideEffects(
   let status = project.status
   let activeSince = project.activeSince
   const lastActivityAt = nowIso()
-
-  // TODO(V3 Phase 3): replace with explicit qualify gate (checklist UI)
-  if (toStage === 'Assessment' && toStatus === 'Completed' && status === 'ForAssessment') {
-    status = 'Qualified'
-  }
 
   // TODO(V3 Phase 4): gate Active behind EHS review instead of first post-Assessment stage
   const preActive: ProjectStatus[] = ['Qualified', 'QualifiedDraft', 'Submitted']
@@ -130,6 +152,21 @@ function applyStatusSideEffects(
   }
 
   return { status, activeSince, lastActivityAt }
+}
+
+function assertStatusTransition(from: ProjectStatus, to: ProjectStatus): void {
+  const allowed = getAllowedStatusTransitions(from)
+  if (!allowed.includes(to)) {
+    throw new Error(`Cannot transition project status from ${from} to ${to}.`)
+  }
+}
+
+function assertCanQualify(actor: User): void {
+  if (!QUALIFY_ROLES.includes(actor.role)) {
+    throw new Error(
+      `Only ${humanizeRole('GovernanceLead')}, ${humanizeRole('RiskCompliance')}, or Admin can qualify projects.`,
+    )
+  }
 }
 
 function emptyV3Fields(timestamp: string) {
@@ -317,6 +354,197 @@ export const useProjectsStore = create<ProjectsStore>()(
               updatedAt: timestamp,
             }
           }),
+        }))
+      },
+
+      qualifyProject: (projectId, payload, actor, note) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertCanQualify(actor)
+        assertStatusTransition(project.status, 'Qualified')
+        if (
+          !canQualify(
+            payload.readiness,
+            payload.qualification,
+            payload.tier,
+            payload.rewardCategory,
+          )
+        ) {
+          throw new Error(
+            'Cannot qualify: readiness must be Met on all dimensions, at least one Section A criterion, plus tier and reward category.',
+          )
+        }
+
+        const timestamp = nowIso()
+        const riskFromTier =
+          payload.tier === 'Tier1' ? 'Low' : payload.tier === 'Tier2' ? 'Medium' : 'High'
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Policy',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'NotStarted',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note:
+            note ||
+            `Qualified as AI project. Tier ${payload.tier}; reward ${payload.rewardCategory}. ${payload.tierRationale}`.trim(),
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Qualified' as const,
+                  readiness: structuredClone(payload.readiness),
+                  qualification: {
+                    ...structuredClone(payload.qualification),
+                    riskTier: payload.qualification.riskTier ?? riskFromTier,
+                  },
+                  tier: payload.tier,
+                  tierRationale: payload.tierRationale,
+                  rewardCategory: payload.rewardCategory,
+                  autoTiered: false,
+                  currentStage: 'Policy' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Assessment: 'Completed',
+                    Policy: 'NotStarted',
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      rejectQualification: (projectId, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertCanQualify(actor)
+        assertStatusTransition(project.status, 'NotQualified')
+        if (!reason.trim()) throw new Error('A rejection reason is required.')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Assessment',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'Blocked',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Not qualified: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'NotQualified' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Assessment: 'Blocked',
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      resubmitForAssessment: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertStatusTransition(project.status, 'ForAssessment')
+
+        const canResubmit =
+          QUALIFY_ROLES.includes(actor.role) ||
+          actor.id === project.submitterId ||
+          actor.role === 'BusinessAnalyst'
+        if (!canResubmit) {
+          throw new Error(
+            'Only the submitter or Governance/Risk/Admin can resubmit for assessment.',
+          )
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Assessment',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'InProgress',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Resubmitted for assessment after Not Qualified decision.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'ForAssessment' as const,
+                  currentStage: 'Assessment' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Assessment: 'InProgress',
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      cancelProject: (projectId, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertStatusTransition(project.status, 'Cancelled')
+        if (!reason.trim()) throw new Error('A cancellation reason is required.')
+
+        const isOwnDraft =
+          project.status === 'IdeaDraft' && actor.id === project.submitterId
+        const isGovernance = CANCEL_GOVERNANCE_ROLES.includes(actor.role)
+        if (!isOwnDraft && !isGovernance) {
+          throw new Error(
+            'Only the submitter (Idea Draft) or Governance/Risk/Admin can cancel this project.',
+          )
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Cancelled: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Cancelled' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
         }))
       },
 

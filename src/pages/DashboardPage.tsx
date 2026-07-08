@@ -117,7 +117,13 @@ function RoleCallout() {
       <button
         type="button"
         className="ml-auto text-[11px] font-medium hover:underline"
-        onClick={() => navigate('/projects')}
+        onClick={() =>
+          navigate(
+            currentUser.role === 'GovernanceLead' || currentUser.role === 'RiskCompliance'
+              ? '/projects?status=ForAssessment'
+              : '/projects',
+          )
+        }
       >
         Review →
       </button>

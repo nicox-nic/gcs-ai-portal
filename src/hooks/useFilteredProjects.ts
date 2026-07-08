@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getStageMeta } from '@/lib/lifecycle'
+import { PROJECT_STATUSES } from '@/lib/projectStatus'
 import { useAuthStore } from '@/stores/authStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Group, LifecycleStage, Project, ProjectStatus, Role, Site } from '@/types'
@@ -28,10 +30,26 @@ function matchesMyProjects(project: Project, userId: string, userRole: Role): bo
   return userRole === meta.primaryOwnerRole || meta.supportingRoles.includes(userRole)
 }
 
+function parseStatusParam(value: string | null): ProjectStatus | 'all' {
+  if (!value || value === 'all') return 'all'
+  return (PROJECT_STATUSES as string[]).includes(value) ? (value as ProjectStatus) : 'all'
+}
+
 export function useFilteredProjects() {
   const projects = useProjectsStore((state) => state.projects)
   const currentUser = useAuthStore((state) => state.currentUser)
-  const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS)
+  const [searchParams] = useSearchParams()
+  const [filters, setFilters] = useState<ProjectFilters>(() => ({
+    ...DEFAULT_PROJECT_FILTERS,
+    status: parseStatusParam(searchParams.get('status')),
+  }))
+
+  useEffect(() => {
+    const fromUrl = parseStatusParam(searchParams.get('status'))
+    setFilters((previous) =>
+      previous.status === fromUrl ? previous : { ...previous, status: fromUrl },
+    )
+  }, [searchParams])
 
   const filteredProjects = useMemo(() => {
     const query = filters.search.trim().toLowerCase()

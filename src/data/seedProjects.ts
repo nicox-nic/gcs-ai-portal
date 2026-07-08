@@ -31,6 +31,37 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
   } as const
 }
 
+function filledBools(length: number, trueCount: number): boolean[] {
+  return Array.from({ length }, (_, i) => i < trueCount)
+}
+
+function assessmentBundle(opts: {
+  tier: 'Tier1' | 'Tier2' | 'Tier3'
+  risk: 'Low' | 'Medium' | 'High'
+  reward: 'Kaizen' | 'TeamProject' | 'ManagementInitiative' | 'Innovation'
+  rationale: string
+  primaryTrue?: number
+}) {
+  const primaryTrue = opts.primaryTrue ?? 2
+  return {
+    readiness: {
+      feasibility: filledBools(7, 5),
+      viability: filledBools(7, 5),
+      desirability: filledBools(7, 4),
+    },
+    qualification: {
+      primary: filledBools(6, primaryTrue),
+      supporting: [true, true, false, true],
+      exclusions: filledBools(5, 0),
+      riskTier: opts.risk,
+    },
+    tier: opts.tier,
+    tierRationale: opts.rationale,
+    rewardCategory: opts.reward,
+    autoTiered: false,
+  }
+}
+
 function stageStatus(
   overrides: Partial<Record<LifecycleStage, StageStatus>>,
 ): Record<LifecycleStage, StageStatus> {
@@ -239,6 +270,13 @@ export const SEED_PROJECTS: Project[] = [
     ],
     reportedBenefitHours: null,
     ...v3Defaults(daysAgo(2), { activeSince: daysAgo(2) }),
+    ...assessmentBundle({
+      tier: 'Tier2',
+      risk: 'Medium',
+      reward: 'TeamProject',
+      rationale: 'Internal ops impact with limited personal data in ticket content.',
+      primaryTrue: 3,
+    }),
     sponsorValidated: false,
   },
   {
@@ -367,6 +405,13 @@ export const SEED_PROJECTS: Project[] = [
     ],
     reportedBenefitHours: null,
     ...v3Defaults(daysAgo(3), { activeSince: daysAgo(3) }),
+    ...assessmentBundle({
+      tier: 'Tier3',
+      risk: 'High',
+      reward: 'Innovation',
+      rationale: 'Predictive model on equipment data with operational safety implications.',
+      primaryTrue: 4,
+    }),
     sponsorValidated: false,
   },
   {
@@ -470,13 +515,10 @@ export const SEED_PROJECTS: Project[] = [
     group: 'Engineering',
     site: 'Cebu',
     department: 'Test Engineering',
-    status: 'Idle',
-    currentStage: 'Development',
+    status: 'NotQualified',
+    currentStage: 'Assessment',
     stageStatus: stageStatus({
-      Assessment: 'Completed',
-      Policy: 'Completed',
-      SupplierOversight: 'Completed',
-      Development: 'Blocked',
+      Assessment: 'Blocked',
     }),
     submission: {
       useCase: 'Detect anomalous patterns in semiconductor tester log streams',
@@ -543,7 +585,7 @@ export const SEED_PROJECTS: Project[] = [
           actorUserId: 'usr-data',
           actorRole: 'DataEngineering',
           timestamp: daysAgo(110),
-          note: 'Project submitted.',
+          note: 'Submitted for qualification.',
         },
         1,
       ),
@@ -553,31 +595,17 @@ export const SEED_PROJECTS: Project[] = [
           fromStage: 'Assessment',
           toStage: 'Assessment',
           fromStatus: 'InProgress',
-          toStatus: 'Completed',
+          toStatus: 'Blocked',
           actorUserId: 'usr-govlead',
           actorRole: 'GovernanceLead',
           timestamp: daysAgo(100),
-          note: 'Qualified with Confidential data tier.',
+          note: 'Not qualified: Deterministic automation / dashboard without AI inference (Section C). Resubmit if AI criteria apply.',
         },
         2,
       ),
-      transition(
-        {
-          projectId: 'prj-027',
-          fromStage: 'Development',
-          toStage: 'Development',
-          fromStatus: 'InProgress',
-          toStatus: 'Blocked',
-          actorUserId: 'usr-risk',
-          actorRole: 'RiskCompliance',
-          timestamp: daysAgo(8),
-          note: 'Blocked — MES log access not yet approved. Data Engineering cannot proceed until IT grants read access.',
-        },
-        3,
-      ),
     ],
     reportedBenefitHours: null,
-    ...v3Defaults(daysAgo(8), { activeSince: daysAgo(8) }),
+    ...v3Defaults(daysAgo(8)),
     sponsorValidated: false,
   },
   {
@@ -697,6 +725,13 @@ export const SEED_PROJECTS: Project[] = [
     ],
     reportedBenefitHours: 24,
     ...v3Defaults(daysAgo(14), { activeSince: daysAgo(14) }),
+    ...assessmentBundle({
+      tier: 'Tier1',
+      risk: 'Low',
+      reward: 'Kaizen',
+      rationale: 'Internal UAT reporting automation; decision-support only.',
+      primaryTrue: 2,
+    }),
     sponsorValidated: true,
   },
   {
@@ -813,6 +848,13 @@ export const SEED_PROJECTS: Project[] = [
     ],
     reportedBenefitHours: null,
     ...v3Defaults(daysAgo(1), { activeSince: daysAgo(1) }),
+    ...assessmentBundle({
+      tier: 'Tier2',
+      risk: 'Medium',
+      reward: 'ManagementInitiative',
+      rationale: 'Customer sentiment analytics with limited personal data.',
+      primaryTrue: 3,
+    }),
     sponsorValidated: false,
   },
   {
@@ -947,6 +989,13 @@ export const SEED_PROJECTS: Project[] = [
     ],
     reportedBenefitHours: 32,
     ...v3Defaults(daysAgo(6), { activeSince: daysAgo(6) }),
+    ...assessmentBundle({
+      tier: 'Tier1',
+      risk: 'Low',
+      reward: 'Kaizen',
+      rationale: 'Internal spare-parts forecast; no customer-facing decisions.',
+      primaryTrue: 2,
+    }),
     sponsorValidated: true,
   },
 ]
