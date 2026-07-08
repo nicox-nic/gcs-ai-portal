@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { SEED_USERS } from '@/data/seedRoles'
 import { humanizeRole, roleDescription } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
+import { useProfileStore } from '@/stores/profileStore'
 import type { Role } from '@/types'
 
 const ROLE_ORDER: Role[] = [
@@ -53,7 +54,8 @@ export function LoginPage() {
 
   function handleSelect(user: (typeof SEED_USERS)[number]) {
     loginAs(user)
-    navigate('/dashboard')
+    const complete = useProfileStore.getState().isComplete(user.id)
+    navigate(complete ? '/dashboard' : '/profile/setup')
   }
 
   return (
