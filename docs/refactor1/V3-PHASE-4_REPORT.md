@@ -64,8 +64,9 @@ Rendered on Overview (sibling to Current Stage Actions) and again on Tool Select
 
 ## Push / deploy
 
-- Commit message: `feat(gates): post-qualification tool selection + submit + EHS gate to Active [Phase 4]`
-- Pushed to `origin/main` — Vercel production deploy triggered from `main`.
+- Commit: `73ada05` — `feat(gates): post-qualification tool selection + submit + EHS gate to Active [Phase 4]`
+- Also pushed Phase 3 (`9a0fc3e`) which was still local-only.
+- Pushed to `origin/main` (`cb8b38f..73ada05`) — Vercel production deploy triggered from `main`.
 
 ## Skipped / flagged
 
