@@ -9,6 +9,7 @@ import {
 } from '@/lib/lifecycle'
 import { canQualify } from '@/lib/qualificationLogic'
 import { getAllowedStatusTransitions } from '@/lib/projectStatus'
+import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
 import type {
@@ -56,6 +57,11 @@ const SUBMISSION_REVIEW_ROLES: User['role'][] = [
 ]
 const EHS_ASSIGN_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
 const EHS_ACTION_ROLES: User['role'][] = ['EHS', 'Admin']
+const PROJECT_REVIEW_ROLES: User['role'][] = [
+  'AIProgramManager',
+  'GovernanceLead',
+  'Admin',
+]
 
 type ProjectsStore = {
   projects: Project[]
@@ -93,8 +99,18 @@ type ProjectsStore = {
   ehsApprove: (projectId: string, actor: User, note?: string) => void
   ehsReject: (projectId: string, reason: string, actor: User) => void
   resubmitAfterRejection: (projectId: string, actor: User) => void
+  logProjectReview: (projectId: string, note: string, actor: User) => void
+  submitForSponsorApproval: (
+    projectId: string,
+    payload: { reportedBenefitHours: number; sponsorId?: string | null },
+    actor: User,
+  ) => void
+  sponsorApprove: (projectId: string, actor: User, note?: string) => void
+  sponsorDisapprove: (projectId: string, reason: string, actor: User) => void
+  reviseAfterDisapproval: (projectId: string, actor: User) => void
   updateProject: (projectId: string, patch: Partial<Project>) => void
   reportBenefits: (projectId: string, hours: number) => void
+  /** @deprecated Phase 5 — completion via sponsorApprove; kept for reset/compat only. */
   validateBenefits: (projectId: string) => void
   resetProjects: () => void
 }
@@ -178,11 +194,20 @@ function assertRole(actor: User, roles: User['role'][], message: string): void {
   }
 }
 
-function canSelectTools(actor: User, project: Project): boolean {
-  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
+function canActOnClosureSubmit(actor: User, project: Project): boolean {
   if (actor.role === 'Admin') return true
   if (actor.id === project.submitterId) return true
   return actor.role === 'DataEngineering' || actor.role === 'AIProgramManager'
+}
+
+function canSponsorDecide(actor: User, project: Project): boolean {
+  if (actor.role === 'Admin') return true
+  if (actor.role === 'Sponsor' && project.sponsorId && actor.id === project.sponsorId) {
+    return true
+  }
+  // Unassigned sponsor: any Sponsor persona may decide in the demo
+  if (actor.role === 'Sponsor' && !project.sponsorId) return true
+  return false
 }
 
 /** Stamp Active + Development InProgress. Called by approveSubmission (no-EHS) and ehsApprove. */
@@ -581,9 +606,9 @@ export const useProjectsStore = create<ProjectsStore>()(
       submitForReview: (projectId, actor) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
-        if (!canSelectTools(actor, project)) {
+        if (!canOwnStack(project, actor)) {
           throw new Error(
-            'Only the submitter, Data Engineering, AI Program Manager, or Admin can submit for review.',
+            'Your role cannot submit the tool stack for review on this project tier.',
           )
         }
         assertStatusTransition(project.status, 'Submitted')
@@ -621,9 +646,9 @@ export const useProjectsStore = create<ProjectsStore>()(
       saveQualifiedDraft: (projectId, actor) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
-        if (!canSelectTools(actor, project)) {
+        if (!canOwnStack(project, actor)) {
           throw new Error(
-            'Only the submitter, Data Engineering, AI Program Manager, or Admin can save a qualified draft.',
+            'Your role cannot save a qualified draft on this project tier.',
           )
         }
         assertStatusTransition(project.status, 'QualifiedDraft')
@@ -849,7 +874,7 @@ export const useProjectsStore = create<ProjectsStore>()(
       resubmitAfterRejection: (projectId, actor) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
-        if (!canSelectTools(actor, project)) {
+        if (!canOwnStack(project, actor) && !canActOnClosureSubmit(actor, project)) {
           throw new Error(
             'Only the submitter, Data Engineering, AI Program Manager, or Admin can resubmit after rejection.',
           )
@@ -874,6 +899,235 @@ export const useProjectsStore = create<ProjectsStore>()(
               ? {
                   ...p,
                   status: 'Submitted' as const,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      logProjectReview: (projectId, note, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          PROJECT_REVIEW_ROLES,
+          `Only ${humanizeRole('AIProgramManager')}, ${humanizeRole('GovernanceLead')}, or Admin can log a project review.`,
+        )
+        if (project.status !== 'Active') {
+          throw new Error('Project reviews can only be logged while the project is Active.')
+        }
+        if (project.tier !== 'Tier2' && project.tier !== 'Tier3') {
+          throw new Error('Separate project reviews apply to Tier2 and Tier3 only.')
+        }
+        if (!note.trim()) throw new Error('A project review note is required.')
+
+        // TODO(V3 Phase 6): emit notification for project review
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: formatProjectReviewNote(note),
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      submitForSponsorApproval: (projectId, payload, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canActOnClosureSubmit(actor, project)) {
+          throw new Error(
+            'Only the submitter, Data Engineering, AI Program Manager, or Admin can submit for sponsor approval.',
+          )
+        }
+        assertStatusTransition(project.status, 'ForSponsorApproval')
+        const hours = payload.reportedBenefitHours
+        if (hours === null || hours === undefined || Number.isNaN(hours) || hours <= 0) {
+          throw new Error('Report benefit hours before submitting for sponsor approval.')
+        }
+
+        const timestamp = nowIso()
+        const nextSponsorId =
+          payload.sponsorId !== undefined ? payload.sponsorId : project.sponsorId
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Use',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'InProgress',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Submitted for sponsor approval with ${hours} reported benefit hours/month.`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'ForSponsorApproval' as const,
+                  reportedBenefitHours: hours,
+                  sponsorValidated: false,
+                  sponsorDecision: null,
+                  sponsorDecisionNote: '',
+                  sponsorId: nextSponsorId ?? p.sponsorId,
+                  currentStage: 'Use' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Use: 'InProgress',
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      sponsorApprove: (projectId, actor, note) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSponsorDecide(actor, project)) {
+          throw new Error(
+            'Only the assigned Sponsor or Admin can approve project closure.',
+          )
+        }
+        assertStatusTransition(project.status, 'Completed')
+        if (project.reportedBenefitHours === null) {
+          throw new Error('Cannot approve closure without reported benefit hours.')
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Use',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'Completed',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: note?.trim() || 'Sponsor approved — project completed.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Completed' as const,
+                  sponsorDecision: 'Approved' as const,
+                  sponsorValidated: true,
+                  currentStage: 'Use' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Use: 'Completed',
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      sponsorDisapprove: (projectId, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSponsorDecide(actor, project)) {
+          throw new Error(
+            'Only the assigned Sponsor or Admin can disapprove project closure.',
+          )
+        }
+        assertStatusTransition(project.status, 'Disapproved')
+        if (!reason.trim()) throw new Error('A disapproval reason is required.')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Sponsor disapproved: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Disapproved' as const,
+                  sponsorDecision: 'Disapproved' as const,
+                  sponsorDecisionNote: reason.trim(),
+                  sponsorValidated: false,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      reviseAfterDisapproval: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canActOnClosureSubmit(actor, project)) {
+          throw new Error(
+            'Only the submitter, Data Engineering, AI Program Manager, or Admin can revise after disapproval.',
+          )
+        }
+        assertStatusTransition(project.status, 'Active')
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: 'Development',
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: 'InProgress',
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Revised after sponsor disapproval — returned to Active.',
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  status: 'Active' as const,
+                  sponsorDecision: null,
+                  sponsorDecisionNote: '',
+                  currentStage: 'Development' as const,
+                  stageStatus: {
+                    ...p.stageStatus,
+                    Development: 'InProgress',
+                    Use: 'NotStarted',
+                  },
                   auditLog: [...p.auditLog, transition],
                   updatedAt: timestamp,
                   lastActivityAt: timestamp,

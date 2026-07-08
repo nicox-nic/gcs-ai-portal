@@ -172,12 +172,7 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
   const pendingQualification = projects.filter((p) => p.status === 'ForAssessment').length
   const pendingEhsReview = projects.filter((p) => p.status === 'ForEHSReview').length
 
-  const awaitingValidation = projects.filter(
-    (p) =>
-      p.status === 'Completed' &&
-      p.reportedBenefitHours !== null &&
-      !p.sponsorValidated,
-  ).length
+  const awaitingValidation = projects.filter((p) => p.status === 'ForSponsorApproval').length
 
   const highRiskProjects = projects.filter(
     (p) =>

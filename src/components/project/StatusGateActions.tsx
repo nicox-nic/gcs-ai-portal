@@ -3,6 +3,7 @@ import { Info, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/dialogs/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -14,6 +15,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { SEED_USERS } from '@/data/seedRoles'
 import { getUserDisplayName } from '@/lib/projectDisplay'
+import { canOwnStack } from '@/lib/tiering'
 import { humanizeRole, cn } from '@/lib/utils'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, User } from '@/types'
@@ -27,6 +29,10 @@ type GateDialog =
   | { kind: 'ehsApprove' }
   | { kind: 'ehsReject' }
   | { kind: 'resubmit' }
+  | { kind: 'submitSponsor' }
+  | { kind: 'sponsorApprove' }
+  | { kind: 'sponsorDisapprove' }
+  | { kind: 'reviseDisapproval' }
   | null
 
 type StatusGateActionsProps = {
@@ -34,10 +40,17 @@ type StatusGateActionsProps = {
   currentUser: User | null
 }
 
-function canOwnTools(user: User, project: Project): boolean {
+function canClosureOwner(user: User, project: Project): boolean {
   if (user.role === 'Admin') return true
   if (user.id === project.submitterId) return true
   return user.role === 'DataEngineering' || user.role === 'AIProgramManager'
+}
+
+function canSponsorAct(user: User, project: Project): boolean {
+  if (user.role === 'Admin') return true
+  if (user.role === 'Sponsor' && project.sponsorId && user.id === project.sponsorId) return true
+  if (user.role === 'Sponsor' && !project.sponsorId) return true
+  return false
 }
 
 export function StatusGateActions({ project, currentUser }: StatusGateActionsProps) {
@@ -47,22 +60,38 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
   const ehsApprove = useProjectsStore((s) => s.ehsApprove)
   const ehsReject = useProjectsStore((s) => s.ehsReject)
   const resubmitAfterRejection = useProjectsStore((s) => s.resubmitAfterRejection)
+  const submitForSponsorApproval = useProjectsStore((s) => s.submitForSponsorApproval)
+  const sponsorApprove = useProjectsStore((s) => s.sponsorApprove)
+  const sponsorDisapprove = useProjectsStore((s) => s.sponsorDisapprove)
+  const reviseAfterDisapproval = useProjectsStore((s) => s.reviseAfterDisapproval)
 
   const [dialog, setDialog] = useState<GateDialog>(null)
   const [reason, setReason] = useState('')
   const [ehsPick, setEhsPick] = useState<string>(project.ehsCoordinatorId ?? '__none__')
+  const [sponsorPick, setSponsorPick] = useState<string>(project.sponsorId ?? '')
+  const [hoursInput, setHoursInput] = useState(
+    project.reportedBenefitHours?.toString() ?? '',
+  )
 
   const ehsUsers = useMemo(() => SEED_USERS.filter((u) => u.role === 'EHS'), [])
+  const sponsors = useMemo(() => SEED_USERS.filter((u) => u.role === 'Sponsor'), [])
 
   const canReview = currentUser !== null && REVIEW_ROLES.includes(currentUser.role)
   const canEhs = currentUser !== null && EHS_ROLES.includes(currentUser.role)
-  const canResubmit = currentUser !== null && canOwnTools(currentUser, project)
+  const canResubmit =
+    currentUser !== null &&
+    (canOwnStack(project, currentUser) || canClosureOwner(currentUser, project))
+  const canSubmitClosure = currentUser !== null && canClosureOwner(currentUser, project)
+  const canSponsor = currentUser !== null && canSponsorAct(currentUser, project)
 
   const relevantStatuses = new Set([
     'Submitted',
     'ForEHSReview',
     'Rejected',
     'EHSRejected',
+    'Active',
+    'ForSponsorApproval',
+    'Disapproved',
   ])
   if (!relevantStatuses.has(project.status)) {
     return null
@@ -79,6 +108,9 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
     }
   }
 
+  const hoursReady =
+    project.reportedBenefitHours !== null && project.reportedBenefitHours > 0
+
   const awaitingNote = (() => {
     if (project.status === 'Submitted' && !canReview) {
       return `Awaiting ${humanizeRole('GovernanceLead')} / ${humanizeRole('AIProgramManager')} review.`
@@ -91,6 +123,18 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
       !canResubmit
     ) {
       return 'Awaiting submitter revision and resubmit.'
+    }
+    if (project.status === 'Active' && !canSubmitClosure) {
+      return 'Awaiting owner to report benefits and submit for sponsor approval.'
+    }
+    if (project.status === 'Active' && canSubmitClosure && !hoursReady) {
+      return 'Report benefit hours on the Benefits & Closure tab before submitting for sponsor approval.'
+    }
+    if (project.status === 'ForSponsorApproval' && !canSponsor) {
+      return 'Awaiting sponsor approval.'
+    }
+    if (project.status === 'Disapproved' && !canSubmitClosure) {
+      return 'Awaiting owner revision after sponsor disapproval.'
     }
     return null
   })()
@@ -176,6 +220,51 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
           type="button"
           className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
           onClick={() => setDialog({ kind: 'resubmit' })}
+        >
+          Revise & resubmit
+        </Button>
+      )}
+
+      {project.status === 'Active' && canSubmitClosure && (
+        <Button
+          type="button"
+          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700 disabled:opacity-50"
+          disabled={!hoursReady}
+          onClick={() => {
+            setSponsorPick(project.sponsorId ?? sponsors[0]?.id ?? '')
+            setHoursInput(project.reportedBenefitHours?.toString() ?? '')
+            setDialog({ kind: 'submitSponsor' })
+          }}
+        >
+          Submit for sponsor approval
+        </Button>
+      )}
+
+      {project.status === 'ForSponsorApproval' && canSponsor && (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+            onClick={() => setDialog({ kind: 'sponsorApprove' })}
+          >
+            Approve
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="h-8 text-xs"
+            onClick={() => setDialog({ kind: 'sponsorDisapprove' })}
+          >
+            Disapprove
+          </Button>
+        </div>
+      )}
+
+      {project.status === 'Disapproved' && canSubmitClosure && (
+        <Button
+          type="button"
+          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+          onClick={() => setDialog({ kind: 'reviseDisapproval' })}
         >
           Revise & resubmit
         </Button>
@@ -316,6 +405,144 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
           runSafe(
             () => resubmitAfterRejection(project.id, currentUser),
             'Resubmitted for review.',
+          )
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'submitSponsor'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Submit for sponsor approval"
+        description={
+          <div className="space-y-3 text-left">
+            <p>Confirm reported benefit hours and assign a sponsor if needed.</p>
+            <div>
+              <Label className="mb-1.5 block text-[11px] text-stone-600">
+                Reported benefit hours / month
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={hoursInput}
+                onChange={(e) => setHoursInput(e.target.value)}
+                className="h-8 text-xs"
+              />
+            </div>
+            {!project.sponsorId && (
+              <div>
+                <Label className="mb-1.5 block text-[11px] text-stone-600">Sponsor</Label>
+                <Select value={sponsorPick} onValueChange={setSponsorPick}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select sponsor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sponsors.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.displayName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {project.sponsorId && (
+              <p className="text-[11px] text-stone-600">
+                Sponsor: {getUserDisplayName(project.sponsorId)}
+              </p>
+            )}
+          </div>
+        }
+        confirmLabel="Submit"
+        onConfirm={() => {
+          if (!currentUser) return
+          const hours = Number(hoursInput)
+          if (!hours || hours <= 0) {
+            toast.error('Enter valid benefit hours.')
+            return
+          }
+          const sponsorId = project.sponsorId ?? (sponsorPick || null)
+          runSafe(
+            () =>
+              submitForSponsorApproval(
+                project.id,
+                { reportedBenefitHours: hours, sponsorId },
+                currentUser,
+              ),
+            'Submitted for sponsor approval.',
+          )
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'sponsorApprove'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Approve closure"
+        description={
+          <span>
+            Confirm benefits of{' '}
+            <strong>{project.reportedBenefitHours ?? '—'} hrs/month</strong> and complete the
+            project.
+          </span>
+        }
+        confirmLabel="Approve"
+        onConfirm={() => {
+          if (!currentUser) return
+          runSafe(() => sponsorApprove(project.id, currentUser), 'Project completed.')
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'sponsorDisapprove'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialog(null)
+            setReason('')
+          }
+        }}
+        title="Disapprove closure"
+        description={
+          <div className="space-y-2 text-left">
+            <p>Provide a reason so the team can revise.</p>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-[80px] text-xs"
+              placeholder="Disapproval reason…"
+            />
+          </div>
+        }
+        confirmLabel="Disapprove"
+        variant="destructive"
+        onConfirm={() => {
+          if (!currentUser) return
+          if (!reason.trim()) {
+            toast.error('A disapproval reason is required.')
+            return
+          }
+          runSafe(
+            () => sponsorDisapprove(project.id, reason, currentUser),
+            'Closure disapproved.',
+          )
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'reviseDisapproval'}
+        onOpenChange={(open) => {
+          if (!open) setDialog(null)
+        }}
+        title="Revise after disapproval"
+        description="Return the project to Active so the team can address the sponsor’s feedback."
+        confirmLabel="Return to Active"
+        onConfirm={() => {
+          if (!currentUser) return
+          runSafe(
+            () => reviseAfterDisapproval(project.id, currentUser),
+            'Returned to Active.',
           )
         }}
       />

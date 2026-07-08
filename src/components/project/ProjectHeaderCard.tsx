@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { TierBadge } from '@/components/common/TierBadge'
 import { LifecycleStepper } from '@/components/project/LifecycleStepper'
 import { Button } from '@/components/ui/button'
 import { stageProgress } from '@/lib/lifecycle'
@@ -44,6 +45,7 @@ export function ProjectHeaderCard({
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <h1 className="text-[17px] font-semibold text-stone-900">{project.title}</h1>
               <StatusBadge kind="project" status={project.status} />
+              {project.tier && <TierBadge tier={project.tier} />}
               <span className="rounded-sm bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#3C3489]">
                 {humanizeStage(project.currentStage)}
               </span>

@@ -20,18 +20,22 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { StageTransitionOption } from '@/lib/lifecycle'
+import { canOwnStack } from '@/lib/tiering'
 import { useAuthStore } from '@/stores/authStore'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { useProjectsStore } from '@/stores/projectsStore'
 import { cn } from '@/lib/utils'
+import type { Project, User } from '@/types'
 
 function showBenefitsTab(project: {
   status: string
   currentStage: string
 }): boolean {
   return (
+    project.status === 'Active' ||
     project.status === 'Completed' ||
     project.status === 'ForSponsorApproval' ||
+    project.status === 'Disapproved' ||
     project.currentStage === 'Use' ||
     project.currentStage === 'Improvement' ||
     project.currentStage === 'Decommissioning'
@@ -39,15 +43,12 @@ function showBenefitsTab(project: {
 }
 
 function canCustomiseStack(
-  project: { status: string; submitterId: string },
-  currentUser: { id: string; role: string } | null,
+  project: Project,
+  currentUser: User | null,
 ): boolean {
   if (!currentUser) return false
   if (project.status !== 'Qualified' && project.status !== 'QualifiedDraft') return false
-  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
-  if (currentUser.role === 'Admin') return true
-  if (currentUser.id === project.submitterId) return true
-  return currentUser.role === 'DataEngineering' || currentUser.role === 'AIProgramManager'
+  return canOwnStack(project, currentUser)
 }
 
 export function ProjectDetailPage() {
@@ -60,7 +61,6 @@ export function ProjectDetailPage() {
   const advanceStage = useProjectsStore((state) => state.advanceStage)
   const applyCombo = useProjectsStore((state) => state.applyCombo)
   const reportBenefits = useProjectsStore((state) => state.reportBenefits)
-  const validateBenefits = useProjectsStore((state) => state.validateBenefits)
   const qualifyProject = useProjectsStore((state) => state.qualifyProject)
   const rejectQualification = useProjectsStore((state) => state.rejectQualification)
   const resubmitForAssessment = useProjectsStore((state) => state.resubmitForAssessment)
@@ -246,20 +246,10 @@ export function ProjectDetailPage() {
                 onReportBenefits={(hours) => {
                   try {
                     reportBenefits(project.id, hours)
-                    toast.success('Benefits submitted for sponsor validation.')
+                    toast.success('Benefit hours saved.')
                   } catch (error) {
                     toast.error(
                       error instanceof Error ? error.message : 'Could not report benefits.',
-                    )
-                  }
-                }}
-                onValidateBenefits={() => {
-                  try {
-                    validateBenefits(project.id)
-                    toast.success('Benefits validated.')
-                  } catch (error) {
-                    toast.error(
-                      error instanceof Error ? error.message : 'Could not validate benefits.',
                     )
                   }
                 }}

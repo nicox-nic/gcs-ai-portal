@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ExternalLink,
   Info,
+  Layers,
   Play,
   RefreshCw,
   Sparkles,
@@ -12,6 +13,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { RoleBadge } from '@/components/common/RoleBadge'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { TierBadge } from '@/components/common/TierBadge'
 import {
   AlternativeToolCard,
   ComboCard,
@@ -22,6 +24,7 @@ import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -51,6 +54,12 @@ import {
   recentAuditEntries,
   shortActorName,
 } from '@/lib/projectDisplay'
+import {
+  TIER_META,
+  canOwnStack,
+  getStackOwnerRoles,
+  isProjectReviewEntry,
+} from '@/lib/tiering'
 import { comboMatchesStack } from '@/lib/toolStack'
 import { cn, formatDateTime, formatRelative, humanizeRole, humanizeStage } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
@@ -68,7 +77,7 @@ type ProjectTabsProps = {
   onCustomiseStack: () => void
   onRequestTransition: (transition: StageTransitionOption) => void
   onReportBenefits: (hours: number) => void
-  onValidateBenefits: () => void
+  onValidateBenefits?: () => void
   onApplyCombo: (comboId: string) => void
 }
 
@@ -174,10 +183,34 @@ export function ProjectOverviewTab({
   const currentStatus = project.stageStatus[project.currentStage]
   const canAct = currentUser ? canActOnStage(currentUser.role, project.currentStage) : false
   const activity = recentAuditEntries(project, 4)
+  const logProjectReview = useProjectsStore((s) => s.logProjectReview)
+  const [reviewNote, setReviewNote] = useState('')
 
   const stackTrainings = trainings.filter((training) =>
     training.toolIds.some((toolId) => project.toolStack.some((entry) => entry.toolId === toolId)),
   )
+
+  const showTierCard =
+    project.tier !== null &&
+    (project.status === 'Active' ||
+      project.status === 'ForSponsorApproval' ||
+      project.status === 'Disapproved' ||
+      project.status === 'Completed' ||
+      project.status === 'Idle')
+
+  const tierMeta = project.tier ? TIER_META[project.tier] : null
+  const ownerRoles = getStackOwnerRoles(project.tier)
+  const canLogReview =
+    currentUser !== null &&
+    project.status === 'Active' &&
+    (project.tier === 'Tier2' || project.tier === 'Tier3') &&
+    (currentUser.role === 'AIProgramManager' ||
+      currentUser.role === 'GovernanceLead' ||
+      currentUser.role === 'Admin')
+
+  const reviewEntries = project.auditLog
+    .filter((entry) => isProjectReviewEntry(entry.note))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px]">
@@ -264,6 +297,79 @@ export function ProjectOverviewTab({
             </p>
           </div>
         </CollapsibleSection>
+
+        {showTierCard && tierMeta && project.tier && (
+          <div className="mb-3.5 border-t-[0.5px] border-stone-200 pt-3.5">
+            <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+              <Layers className="h-3.5 w-3.5 text-indigo-700" />
+              Tier & Development
+            </div>
+            <div className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <TierBadge tier={project.tier} />
+                <span className="text-stone-500">Risk: {tierMeta.risk}</span>
+              </div>
+              <p className="mb-2 text-stone-700">{tierMeta.approach}</p>
+              <p className="mb-2 text-stone-600">{tierMeta.guidance}</p>
+              <div className="mb-2">
+                <span className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-stone-500">
+                  Who develops
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {ownerRoles.map((role) => (
+                    <RoleBadge key={role} role={role} />
+                  ))}
+                </div>
+              </div>
+              {reviewEntries.length > 0 && (
+                <div className="mb-2 space-y-1.5 border-t-[0.5px] border-stone-200 pt-2">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-stone-500">
+                    Project reviews
+                  </span>
+                  {reviewEntries.slice(0, 3).map((entry) => (
+                    <div key={entry.id} className="rounded bg-white px-2 py-1.5 text-[10px] text-stone-600">
+                      <p>{entry.note.replace(/^\[Project Review\]\s*/, '')}</p>
+                      <p className="text-stone-400">
+                        {formatRelative(entry.timestamp)} · {humanizeRole(entry.actorRole)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {canLogReview && (
+                <div className="border-t-[0.5px] border-stone-200 pt-2">
+                  <label className="mb-1 block text-[10px] font-medium text-stone-600">
+                    Log project review
+                  </label>
+                  <Textarea
+                    value={reviewNote}
+                    onChange={(e) => setReviewNote(e.target.value)}
+                    className="mb-2 min-h-[60px] text-xs"
+                    placeholder="Checkpoint notes…"
+                  />
+                  <Button
+                    type="button"
+                    className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+                    onClick={() => {
+                      if (!currentUser) return
+                      try {
+                        logProjectReview(project.id, reviewNote, currentUser)
+                        toast.success('Project review logged.')
+                        setReviewNote('')
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error ? error.message : 'Could not log review.',
+                        )
+                      }
+                    }}
+                  >
+                    Log project review
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="border-t-[0.5px] border-stone-200 pt-3.5">
           <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
@@ -493,14 +599,7 @@ export function ProjectToolSelectionTab({
 
   const editable =
     project.status === 'Qualified' || project.status === 'QualifiedDraft'
-  // TODO(V3 Phase 5): tighten by tier — Tier1 self-serve vs Tier3 team-led
-  const canEdit =
-    editable &&
-    currentUser !== null &&
-    (currentUser.role === 'Admin' ||
-      currentUser.id === project.submitterId ||
-      currentUser.role === 'DataEngineering' ||
-      currentUser.role === 'AIProgramManager')
+  const canEdit = editable && canOwnStack(project, currentUser)
 
   const generateRecommendations = (force: boolean) => {
     if (!force && project.recommendations.length > 0) return
@@ -725,16 +824,29 @@ export function ProjectBenefitsTab({
   project,
   currentUser,
   onReportBenefits,
-  onValidateBenefits,
-}: Pick<ProjectTabsProps, 'project' | 'currentUser' | 'onReportBenefits' | 'onValidateBenefits'>) {
+}: Pick<ProjectTabsProps, 'project' | 'currentUser' | 'onReportBenefits'>) {
   const [hoursInput, setHoursInput] = useState(
     project.reportedBenefitHours?.toString() ?? '',
   )
 
-  const isSubmitter = currentUser?.id === project.submitterId
-  const isSponsor = currentUser?.id === project.sponsorId
+  const canReport =
+    project.status === 'Active' &&
+    currentUser !== null &&
+    (currentUser.role === 'Admin' ||
+      currentUser.id === project.submitterId ||
+      currentUser.role === 'DataEngineering' ||
+      currentUser.role === 'AIProgramManager')
+
   const expected = project.submission.expectedBenefitHours
   const reported = project.reportedBenefitHours
+  const approvalEntry = [...project.auditLog]
+    .reverse()
+    .find(
+      (entry) =>
+        project.sponsorDecision === 'Approved' &&
+        entry.toStatus === 'Completed' &&
+        entry.toStage === 'Use',
+    )
 
   return (
     <div className="space-y-4 p-4">
@@ -754,9 +866,12 @@ export function ProjectBenefitsTab({
         </div>
       </div>
 
-      {isSubmitter && (
+      {canReport && (
         <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
           <div className="mb-2 text-sm font-medium text-stone-900">Report benefits</div>
+          <p className="mb-3 text-xs text-stone-600">
+            Enter actual benefit hours, then use Status gate actions → Submit for sponsor approval.
+          </p>
           <label className="mb-1.5 block text-[11px] text-stone-700">
             Reported benefit hours per month
           </label>
@@ -779,28 +894,57 @@ export function ProjectBenefitsTab({
               onReportBenefits(hours)
             }}
           >
-            Submit for sponsor validation
+            Save benefit hours
           </Button>
         </div>
       )}
 
-      {isSponsor && reported !== null && (
+      {project.status === 'ForSponsorApproval' && (
         <div className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
-          <div className="mb-2 text-sm font-medium text-stone-900">Sponsor validation</div>
-          <p className="mb-3 text-xs text-stone-600">
-            Submitter reported <strong>{reported} hrs/month</strong>.
-            {project.sponsorValidated
-              ? ' You have validated these benefits.'
-              : ' Review and validate when satisfied.'}
+          <div className="mb-2 text-sm font-medium text-stone-900">Awaiting sponsor decision</div>
+          <p className="text-xs text-stone-600">
+            Reported <strong>{reported ?? '—'} hrs/month</strong>
+            {project.sponsorId
+              ? ` · Sponsor: ${getUserDisplayName(project.sponsorId)}`
+              : ' · Sponsor unassigned'}
+            . Use Status gate actions to Approve or Disapprove.
           </p>
-          <Button
-            type="button"
-            className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
-            disabled={project.sponsorValidated}
-            onClick={onValidateBenefits}
-          >
-            {project.sponsorValidated ? 'Validated' : 'Validate'}
-          </Button>
+        </div>
+      )}
+
+      {project.status === 'Disapproved' && (
+        <div className="rounded-lg border-[0.5px] border-red-200 bg-red-50 p-4">
+          <div className="mb-2 text-sm font-medium text-red-900">Sponsor disapproved</div>
+          <p className="text-xs text-red-800">
+            {project.sponsorDecisionNote || 'No reason recorded.'}
+          </p>
+        </div>
+      )}
+
+      {project.status === 'Completed' && (
+        <div className="rounded-lg border-[0.5px] border-green-200 bg-green-50 p-4">
+          <div className="mb-2 text-sm font-medium text-green-900">Closure summary</div>
+          <div className="space-y-1.5 text-xs text-green-900">
+            <p>
+              Reported benefit: <strong>{reported ?? '—'} hrs/month</strong>
+            </p>
+            <p>
+              Sponsor decision:{' '}
+              <strong>{project.sponsorDecision ?? 'Approved'}</strong>
+              {project.sponsorId ? ` · ${getUserDisplayName(project.sponsorId)}` : ''}
+            </p>
+            {approvalEntry && (
+              <p className="text-green-800">
+                Closed {formatDateTime(approvalEntry.timestamp)} by{' '}
+                {humanizeRole(approvalEntry.actorRole)}
+              </p>
+            )}
+            {project.tier && (
+              <p className="flex items-center gap-2">
+                Tier: <TierBadge tier={project.tier} />
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

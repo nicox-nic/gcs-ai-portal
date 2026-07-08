@@ -112,3 +112,53 @@ describe('projectsStore Phase 4 gates', () => {
     expect(updated?.activeSince).toBe(stamped)
   })
 })
+
+describe('projectsStore Phase 5 closure', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  it('submitForSponsorApproval is blocked until hours are reported', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      currentStage: 'Development',
+      reportedBenefitHours: null,
+      sponsorId: 'usr-sponsor',
+    })
+    const submitter = userByRole('Submitter')
+    expect(() =>
+      useProjectsStore.getState().submitForSponsorApproval(
+        project.id,
+        { reportedBenefitHours: 0 },
+        submitter,
+      ),
+    ).toThrow(/benefit hours/i)
+  })
+
+  it('sponsorApprove completes the project and sets sponsorValidated', () => {
+    const project = makeQualifiedProject({
+      status: 'ForSponsorApproval',
+      currentStage: 'Use',
+      reportedBenefitHours: 18,
+      sponsorId: 'usr-sponsor',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'Completed',
+        Use: 'InProgress',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+    })
+    const sponsor = userByRole('Sponsor')
+    useProjectsStore.getState().sponsorApprove(project.id, sponsor)
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.status).toBe('Completed')
+    expect(updated?.sponsorValidated).toBe(true)
+    expect(updated?.sponsorDecision).toBe('Approved')
+    expect(updated?.stageStatus.Use).toBe('Completed')
+  })
+})

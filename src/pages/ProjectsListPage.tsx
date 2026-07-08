@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '@/components/common/EmptyState'
 import { GroupBadge } from '@/components/common/GroupBadge'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { TierBadge } from '@/components/common/TierBadge'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -197,12 +198,15 @@ export function ProjectsListPage() {
                 return (
                   <TableRow key={project.id}>
                     <TableCell className="min-w-[220px]">
-                      <Link
-                        to={`/projects/${project.id}`}
-                        className="text-xs font-medium text-indigo-700 hover:underline"
-                      >
-                        {project.title}
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Link
+                          to={`/projects/${project.id}`}
+                          className="text-xs font-medium text-indigo-700 hover:underline"
+                        >
+                          {project.title}
+                        </Link>
+                        {project.tier && <TierBadge tier={project.tier} compact />}
+                      </div>
                       <div className="mt-1.5 h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-stone-100">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-[#1D9E75] to-indigo-600"
