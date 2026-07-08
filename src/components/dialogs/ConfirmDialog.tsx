@@ -18,7 +18,8 @@ type ConfirmDialogProps = {
   confirmLabel?: string
   cancelLabel?: string
   variant?: 'default' | 'destructive'
-  onConfirm: () => void
+  /** Return `false` to keep the dialog open (e.g. failed validation). */
+  onConfirm: () => boolean | void
 }
 
 export function ConfirmDialog({
@@ -32,7 +33,8 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const handleConfirm = () => {
-    onConfirm()
+    const result = onConfirm()
+    if (result === false) return
     onOpenChange(false)
   }
 

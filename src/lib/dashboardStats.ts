@@ -1,6 +1,8 @@
-import type { Group, LifecycleStage, Project, Role, Site, Tool } from '@/types'
+import type { Group, LifecycleStage, Project, ProjectStatus, ProjectTier, Role, Site, Tool } from '@/types'
 import { SEED_USERS } from '@/data/seedRoles'
 import { GROUP_HEADCOUNT, SITE_HEADCOUNT } from '@/data/seedOrg'
+import { PROJECT_STATUSES, STATUS_META } from '@/lib/projectStatus'
+import { TIER_META } from '@/lib/tiering'
 import { ROLE_STYLES } from '@/lib/roleStyles'
 
 const LIFECYCLE_STAGES: LifecycleStage[] = [
@@ -92,6 +94,27 @@ export type ActivityDatum = {
   timestamp: string
 }
 
+export type StatusPipelineDatum = {
+  status: ProjectStatus
+  label: string
+  count: number
+}
+
+export type TierDistributionDatum = {
+  tier: ProjectTier
+  label: string
+  count: number
+  percentage: number
+}
+
+export type QueueStat = {
+  key: string
+  label: string
+  count: number
+  filterStatus: ProjectStatus
+  href: string
+}
+
 export type DashboardStats = {
   totalProjects: number
   inProgressCount: number
@@ -103,6 +126,9 @@ export type DashboardStats = {
   highRiskProjects: number
   idleCount: number
   deactivatedCount: number
+  queues: QueueStat[]
+  statusPipeline: StatusPipelineDatum[]
+  tierDistribution: TierDistributionDatum[]
   lifecycleByStage: LifecycleStageDatum[]
   completionRateByGroup: GroupRateDatum[]
   adoptionByGroup: GroupRateDatum[]
@@ -111,6 +137,18 @@ export type DashboardStats = {
   topContributors: ContributorDatum[]
   recentActivity: ActivityDatum[]
 }
+
+export const TIER_CHART_COLORS: Record<ProjectTier, string> = {
+  Tier1: '#1D9E75',
+  Tier2: '#EF9F27',
+  Tier3: '#A32D2D',
+}
+
+const ADOPTION_EXCLUDED = new Set<ProjectStatus>([
+  'IdeaDraft',
+  'NotQualified',
+  'Cancelled',
+])
 
 function countBy<T extends string>(items: T[]): Record<T, number> {
   return items.reduce(
@@ -184,6 +222,66 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
       Object.values(p.stageStatus).some((status) => status === 'Blocked'),
   ).length
 
+  const queues: QueueStat[] = [
+    {
+      key: 'qualification',
+      label: 'Pending qualification',
+      count: pendingQualification,
+      filterStatus: 'ForAssessment',
+      href: '/projects?status=ForAssessment',
+    },
+    {
+      key: 'ehs',
+      label: 'Pending EHS',
+      count: pendingEhsReview,
+      filterStatus: 'ForEHSReview',
+      href: '/projects?status=ForEHSReview',
+    },
+    {
+      key: 'sponsor',
+      label: 'Awaiting sponsor',
+      count: awaitingValidation,
+      filterStatus: 'ForSponsorApproval',
+      href: '/projects?status=ForSponsorApproval',
+    },
+    {
+      key: 'idle',
+      label: 'Idle',
+      count: idleCount,
+      filterStatus: 'Idle',
+      href: '/projects?status=Idle',
+    },
+    {
+      key: 'deactivated',
+      label: 'Deactivated',
+      count: deactivatedCount,
+      filterStatus: 'Deactivated',
+      href: '/projects?status=Deactivated',
+    },
+  ]
+
+  const statusCounts = countBy(projects.map((p) => p.status))
+  const statusPipeline: StatusPipelineDatum[] = PROJECT_STATUSES.map((status) => ({
+    status,
+    label: STATUS_META[status].label,
+    count: statusCounts[status] ?? 0,
+  }))
+
+  const tiered = projects.filter((p): p is Project & { tier: ProjectTier } => p.tier !== null)
+  const tierCounts = countBy(tiered.map((p) => p.tier))
+  const tierTotal = tiered.length
+  const tierDistribution: TierDistributionDatum[] = (['Tier1', 'Tier2', 'Tier3'] as ProjectTier[]).map(
+    (tier) => {
+      const count = tierCounts[tier] ?? 0
+      return {
+        tier,
+        label: `${tier} · ${TIER_META[tier].label}`,
+        count,
+        percentage: tierTotal > 0 ? Math.round((count / tierTotal) * 100) : 0,
+      }
+    },
+  )
+
   const stageCounts = countBy(projects.map((p) => p.currentStage))
   const lifecycleByStage = LIFECYCLE_STAGES.map((stage) => ({
     stage,
@@ -210,7 +308,9 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
 
   const adoptionByGroup = groups
     .map((group) => {
-      const numerator = projects.filter((p) => p.group === group).length
+      const numerator = projects.filter(
+        (p) => p.group === group && !ADOPTION_EXCLUDED.has(p.status),
+      ).length
       const denominator = GROUP_HEADCOUNT[group]
       const percentage =
         denominator > 0 ? Math.round((numerator / denominator) * 100) : 0
@@ -221,7 +321,9 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
   const sites: Site[] = ['Japan', 'Korea', 'Costa Rica', 'Cebu']
   const adoptionBySite = sites
     .map((site) => {
-      const numerator = projects.filter((p) => p.site === site).length
+      const numerator = projects.filter(
+        (p) => p.site === site && !ADOPTION_EXCLUDED.has(p.status),
+      ).length
       const denominator = SITE_HEADCOUNT[site]
       const percentage =
         denominator > 0 ? Math.round((numerator / denominator) * 100) : 0
@@ -324,6 +426,9 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     highRiskProjects,
     idleCount,
     deactivatedCount,
+    queues,
+    statusPipeline,
+    tierDistribution,
     lifecycleByStage,
     completionRateByGroup,
     adoptionByGroup,

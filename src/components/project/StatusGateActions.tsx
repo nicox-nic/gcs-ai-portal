@@ -360,10 +360,10 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         confirmLabel="Reject"
         variant="destructive"
         onConfirm={() => {
-          if (!currentUser) return
+          if (!currentUser) return false
           if (!reason.trim()) {
             toast.error('A rejection reason is required.')
-            return
+            return false
           }
           runSafe(
             () => rejectSubmission(project.id, reason, currentUser),
@@ -409,10 +409,10 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         confirmLabel="EHS Reject"
         variant="destructive"
         onConfirm={() => {
-          if (!currentUser) return
+          if (!currentUser) return false
           if (!reason.trim()) {
             toast.error('An EHS rejection reason is required.')
-            return
+            return false
           }
           runSafe(() => ehsReject(project.id, reason, currentUser), 'EHS rejected.')
         }}
@@ -482,11 +482,11 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         }
         confirmLabel="Submit"
         onConfirm={() => {
-          if (!currentUser) return
+          if (!currentUser) return false
           const hours = Number(hoursInput)
           if (!hours || hours <= 0) {
             toast.error('Enter valid benefit hours.')
-            return
+            return false
           }
           const sponsorId = project.sponsorId ?? (sponsorPick || null)
           runSafe(
@@ -544,10 +544,10 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         confirmLabel="Disapprove"
         variant="destructive"
         onConfirm={() => {
-          if (!currentUser) return
+          if (!currentUser) return false
           if (!reason.trim()) {
             toast.error('A disapproval reason is required.')
-            return
+            return false
           }
           runSafe(
             () => sponsorDisapprove(project.id, reason, currentUser),

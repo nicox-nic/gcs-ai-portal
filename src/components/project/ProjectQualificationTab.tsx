@@ -586,7 +586,10 @@ export function ProjectQualificationTab({
         }
         confirmLabel="Qualify"
         onConfirm={() => {
-          if (!tier || !rewardCategory) return
+          if (!tier || !rewardCategory) {
+            toast.error('Tier and reward category are required.')
+            return false
+          }
           try {
             onQualify({
               readiness,
@@ -598,6 +601,7 @@ export function ProjectQualificationTab({
             toast.success('Project qualified.')
           } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not qualify.')
+            return false
           }
         }}
       />
@@ -612,11 +616,16 @@ export function ProjectQualificationTab({
         confirmLabel="Not Qualified"
         variant="destructive"
         onConfirm={() => {
+          if (!reason.trim()) {
+            toast.error('A reason is required.')
+            return false
+          }
           try {
             onReject(reason)
             toast.success('Marked Not Qualified.')
           } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not reject.')
+            return false
           }
         }}
       />
@@ -631,11 +640,16 @@ export function ProjectQualificationTab({
         confirmLabel="Cancel project"
         variant="destructive"
         onConfirm={() => {
+          if (!reason.trim()) {
+            toast.error('A cancellation reason is required.')
+            return false
+          }
           try {
             onCancel(reason)
             toast.success('Project cancelled.')
           } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Could not cancel.')
+            return false
           }
         }}
       />

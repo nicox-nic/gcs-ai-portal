@@ -21,6 +21,7 @@ import {
   CONTRIBUTOR_RANK_COLORS,
   GROUP_CHART_COLORS,
   SITE_CHART_COLORS,
+  TIER_CHART_COLORS,
   type ActivityDatum,
   type ContributorDatum,
   type ToolUsageDatum,
@@ -83,6 +84,14 @@ function RoleCallout() {
       className: 'border-amber-200 bg-amber-50 text-amber-900',
       icon: ShieldCheck,
     }
+  } else if (currentUser.role === 'RiskCompliance' && stats.pendingQualification > 0) {
+    content = {
+      text: 'Pending qualification:',
+      suffix: ' awaiting risk review',
+      count: stats.pendingQualification,
+      className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
+      icon: ShieldCheck,
+    }
   } else if (currentUser.role === 'Sponsor' && stats.awaitingValidation > 0) {
     content = {
       text: 'Awaiting your validation:',
@@ -125,7 +134,9 @@ function RoleCallout() {
         ? '/projects?status=ForEHSReview'
         : content.text.startsWith('Idle')
           ? '/projects?status=Idle'
-          : '/projects'
+          : content.text.startsWith('Awaiting your validation')
+            ? '/projects?status=ForSponsorApproval'
+            : '/projects'
 
   return (
     <div
@@ -258,6 +269,7 @@ function ActivityRow({ activity }: { activity: ActivityDatum }) {
 }
 
 export function DashboardPage() {
+  const navigate = useNavigate()
   const currentUser = useAuthStore((state) => state.currentUser)
   const stats = useDashboardStats()
   const chartsReady = useHydrationReady()
@@ -297,29 +309,77 @@ export function DashboardPage() {
           icon={FolderKanban}
           label="Total Projects"
           value={stats.totalProjects.toLocaleString()}
-          context="Across all stages"
+          context="Across all statuses"
         />
         <KpiCard
           icon={TrendingUp}
-          label="In Progress"
+          label="Active"
           value={stats.inProgressCount.toLocaleString()}
-          context="Active builds"
+          context="In build / use"
+          onClick={() => navigate('/projects?status=Active')}
         />
         <KpiCard
           icon={CheckCircle2}
           label="Completed"
           value={stats.completedCount.toLocaleString()}
           context="Validated by sponsor"
+          onClick={() => navigate('/projects?status=Completed')}
         />
         <KpiCard
           icon={Clock3}
           label="Hours Saved"
           value={stats.hoursSaved.toLocaleString()}
-          context="Per month, reported"
+          context="Per month, sponsor-validated"
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {stats.queues.map((queue) => (
+          <KpiCard
+            key={queue.key}
+            icon={ListTodo}
+            label={queue.label}
+            value={queue.count.toLocaleString()}
+            context="Open queue"
+            onClick={() => navigate(queue.href)}
+          />
+        ))}
+      </div>
+
       <RoleCallout />
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <DashboardCard title="Status Pipeline" meta="Counts by operational status">
+          <div className="max-h-[220px] space-y-0 overflow-y-auto pr-1">
+            {stats.statusPipeline
+              .filter((row) => row.count > 0)
+              .map((row) => {
+                const max = Math.max(...stats.statusPipeline.map((s) => s.count), 1)
+                return (
+                  <HorizontalBarRow
+                    key={row.status}
+                    label={row.label}
+                    percentage={Math.round((row.count / max) * 100)}
+                    meta={`${row.count}`}
+                    color="#534AB7"
+                  />
+                )
+              })}
+          </div>
+        </DashboardCard>
+
+        <DashboardCard title="Tier Distribution" meta="Among tiered projects">
+          {stats.tierDistribution.map((row) => (
+            <HorizontalBarRow
+              key={row.tier}
+              label={row.label}
+              percentage={row.percentage}
+              meta={`${row.count} project${row.count === 1 ? '' : 's'}`}
+              color={TIER_CHART_COLORS[row.tier]}
+            />
+          ))}
+        </DashboardCard>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <DashboardCard title="Projects by Lifecycle Stage">
@@ -330,7 +390,7 @@ export function DashboardPage() {
           )}
         </DashboardCard>
 
-        <DashboardCard title="Completion Rate by Group" meta="Completed / Submitted">
+        <DashboardCard title="Completion Rate by Group" meta="Completed / in pipeline">
           {stats.completionRateByGroup.map((row) => (
             <HorizontalBarRow
               key={row.group}

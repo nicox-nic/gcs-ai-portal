@@ -117,8 +117,6 @@ type ProjectsStore = {
   reviseAfterDisapproval: (projectId: string, actor: User) => void
   updateProject: (projectId: string, patch: Partial<Project>) => void
   reportBenefits: (projectId: string, hours: number) => void
-  /** @deprecated Phase 5 — completion via sponsorApprove; kept for reset/compat only. */
-  validateBenefits: (projectId: string) => void
   runAging: () => void
   reactivateProject: (projectId: string, actor: User) => void
   resetProjects: () => void
@@ -174,6 +172,9 @@ function appendTransition(
  * Active is gated via approveSubmission / ehsApprove (Phase 4) — no auto-Active from stage advance.
  * Completed arrives only from sponsor approval (Phase 5) — no Use→Completed auto-rule.
  * Qualification is explicit via qualifyProject (Phase 3) — no Assessment→Qualified auto-rule.
+ *
+ * Kept: Decommissioning stage Completed → Deactivated (governance retirement path).
+ * Aging can also set Deactivated independently; this mapping covers intentional ISO retirement.
  */
 function applyStatusSideEffects(
   project: Project,
@@ -1212,24 +1213,6 @@ export const useProjectsStore = create<ProjectsStore>()(
                   lastActivityAt: timestamp,
                 }
               : project,
-          ),
-        }))
-      },
-
-      validateBenefits: (projectId) => {
-        const project = get().projects.find((p) => p.id === projectId)
-        if (!project) {
-          throw new Error(`Project not found: ${projectId}`)
-        }
-        if (project.reportedBenefitHours === null) {
-          throw new Error('Cannot validate benefits before submitter reports hours')
-        }
-        const timestamp = nowIso()
-        set((state) => ({
-          projects: state.projects.map((p) =>
-            p.id === projectId
-              ? { ...p, sponsorValidated: true, updatedAt: timestamp, lastActivityAt: timestamp }
-              : p,
           ),
         }))
       },
