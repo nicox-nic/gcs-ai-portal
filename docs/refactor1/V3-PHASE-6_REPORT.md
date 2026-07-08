@@ -78,8 +78,8 @@ Top-of-file comment documents swap to `RemoteCiPortalAdapter` later.
 
 ## Push / deploy
 
-- Commit: `feat(lifecycle): aging engine + demo clock + notifications + CI Portal mirror [Phase 6]`
-- Pushed to `origin/main` — Vercel production deploy triggered from `main`.
+- Commit: `9821365` — `feat(lifecycle): aging engine + demo clock + notifications + CI Portal mirror [Phase 6]`
+- Pushed to `origin/main` (`b1ab03d..9821365`) — Vercel production deploy triggered from `main`.
 
 ## Skipped / flagged
 
