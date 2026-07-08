@@ -30,6 +30,7 @@ type CreateProjectInput = {
   site: Site
   department: string
   submission: Submission
+  intakeMode?: 'manual' | 'assisted'
 }
 
 type ProjectsStore = {
@@ -175,6 +176,7 @@ export const useProjectsStore = create<ProjectsStore>()(
           auditLog: [],
           reportedBenefitHours: null,
           sponsorValidated: false,
+          intakeMode: input.intakeMode ?? 'manual',
           ...emptyV3Fields(timestamp),
         }
         set((state) => ({ projects: [...state.projects, project] }))

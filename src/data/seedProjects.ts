@@ -27,6 +27,7 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     lastActivityAt: updatedAt,
     sponsorDecision: null,
     sponsorDecisionNote: '',
+    intakeMode: 'manual' as const,
   } as const
 }
 

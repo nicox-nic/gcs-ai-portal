@@ -31,6 +31,7 @@ export type WizardFormState = {
   site: Site | ''
   department: string
   targetUsers: string
+  estimatedUsers: string
   useCase: string
   problem: string
   goal: string
@@ -52,6 +53,7 @@ export const EMPTY_WIZARD_FORM: WizardFormState = {
   site: '',
   department: '',
   targetUsers: '',
+  estimatedUsers: '',
   useCase: '',
   problem: '',
   goal: '',
@@ -86,7 +88,14 @@ export function getWizardChecklist(form: WizardFormState): ChecklistItem[] {
       complete: form.group !== '' && form.site !== '',
     },
     { id: 'department', label: 'Department', complete: form.department.trim().length > 0 },
-    { id: 'target-users', label: 'Target users', complete: form.targetUsers.trim().length > 0 },
+    {
+      id: 'target-users',
+      label: 'Target users',
+      complete:
+        form.targetUsers.trim().length > 0 &&
+        form.estimatedUsers.trim().length > 0 &&
+        Number(form.estimatedUsers) > 0,
+    },
     {
       id: 'use-case',
       label: 'Use case description',
@@ -124,7 +133,7 @@ export function buildSubmission(form: WizardFormState): Submission {
     skillLevelAvailable: form.skillLevelAvailable as SkillLevel,
     existingTools,
     integrationTargets,
-    estimatedUsers: 50, // TODO(V3 Phase 2): collect from intake wizard
+    estimatedUsers: Number(form.estimatedUsers) || 0,
     expectedBenefitHours: Number(form.expectedBenefitHours) || 0,
   }
 }
@@ -137,6 +146,9 @@ export function validateWizardStep(step: number, form: WizardFormState): string 
       if (!form.site) return 'Site is required.'
       if (!form.department.trim()) return 'Department is required.'
       if (!form.targetUsers.trim()) return 'Target users are required.'
+      if (!form.estimatedUsers.trim() || Number(form.estimatedUsers) <= 0) {
+        return 'Estimated number of users is required.'
+      }
       return null
     case 2:
       if (!form.useCase.trim()) return 'Use case is required.'

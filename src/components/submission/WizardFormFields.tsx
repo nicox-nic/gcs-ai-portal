@@ -178,6 +178,22 @@ export function WizardFormFields({ currentStep, form, onChange }: WizardFormFiel
                 />
               </div>
             </div>
+            <div>
+              <Label className="mb-1.5 text-[11px] text-stone-700">
+                Estimated users <RequiredMark />
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={form.estimatedUsers}
+                onChange={(event) => onChange({ estimatedUsers: event.target.value })}
+                className="h-9 text-xs"
+                placeholder="e.g. 120"
+              />
+              <p className="mt-1 text-[10px] text-stone-500">
+                Approximate number of people who will use this solution.
+              </p>
+            </div>
           </div>
           <section className="mt-5">
             <StepSectionHeader

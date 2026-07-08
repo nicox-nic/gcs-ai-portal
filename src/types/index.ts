@@ -198,6 +198,8 @@ export interface Project {
   auditLog: StageTransition[]
   reportedBenefitHours: number | null
   sponsorValidated: boolean
+  /** How the project was created — defaults to manual for seeds / legacy. */
+  intakeMode?: 'manual' | 'assisted'
   tier: ProjectTier | null
   tierRationale: string
   autoTiered: boolean

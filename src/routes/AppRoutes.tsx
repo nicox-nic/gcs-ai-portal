@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminPage } from '@/pages/AdminPage'
+import { AssistedIntakePage } from '@/pages/AssistedIntakePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { ManualSubmitPage } from '@/pages/ManualSubmitPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { ProfileSetupPage } from '@/pages/ProfileSetupPage'
@@ -29,6 +31,8 @@ export function AppRoutes() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/submit" element={<SubmitProjectPage />} />
+        <Route path="/submit/manual" element={<ManualSubmitPage />} />
+        <Route path="/submit/assisted" element={<AssistedIntakePage />} />
         <Route path="/projects" element={<ProjectsListPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
         <Route path="/projects/:id/recommendations" element={<RecommendationPage />} />
