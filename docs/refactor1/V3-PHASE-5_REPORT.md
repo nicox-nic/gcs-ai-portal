@@ -57,8 +57,8 @@
 
 ## Push / deploy
 
-- Commit message: `feat(closure): per-tier development overlay + sponsor-approval closure [Phase 5]`
-- Pushed to `origin/main` — Vercel production deploy triggered from `main`.
+- Commit: `de36f0d` — `feat(closure): per-tier development overlay + sponsor-approval closure [Phase 5]`
+- Pushed to `origin/main` (`f9a51ff..de36f0d`) — Vercel production deploy triggered from `main`.
 
 ## Skipped / flagged
 
