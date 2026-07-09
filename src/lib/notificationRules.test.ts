@@ -51,6 +51,15 @@ describe('recipientsFor (Phase 9–10)', () => {
     expect(drift.cc).toContain('usr-data')
   })
 
+  it('verification-requested TO is assigned DE; signed-off TO is PM', () => {
+    const project = baseProject({
+      dataEngineerId: 'usr-data',
+      programManagerId: 'usr-pm',
+    })
+    expect(recipientsFor('verification-requested', project).to).toEqual(['usr-data'])
+    expect(recipientsFor('verification-signed-off', project).to).toEqual(['usr-pm'])
+  })
+
   it('uat-signed-off TO prefers assigned PM and DE', () => {
     const project = baseProject({
       dataEngineerId: 'usr-data',

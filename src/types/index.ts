@@ -208,6 +208,22 @@ export interface UatArtifact {
   signedOffAt: string | null
 }
 
+export type VerificationResult = 'Pass' | 'Fail' | 'Untested'
+
+export interface VerificationCheck {
+  id: string
+  description: string
+  result: VerificationResult
+}
+
+export interface VerificationArtifact {
+  checks: VerificationCheck[]
+  outcome: 'Pass' | 'Fail' | 'Pending'
+  notes: string
+  verifiedBy: string | null
+  verifiedAt: string | null
+}
+
 export type HealthState = 'Healthy' | 'Watch' | 'Incident'
 export type DriftState = 'None' | 'Suspected' | 'Confirmed'
 export type IncidentSeverity = 'Low' | 'Medium' | 'High'
@@ -273,6 +289,8 @@ export interface Project {
   requirements: RequirementsArtifact | null
   /** BA UAT artifact — null until started. */
   uat: UatArtifact | null
+  /** DE tool & model verification — null until Deployment work begins. */
+  verification: VerificationArtifact | null
   /** M&S operations overlay — null until go-live. */
   operations: OperationsRecord | null
   activeSince: string | null
@@ -314,6 +332,8 @@ export type NotificationKind =
   | 'incident-opened'
   | 'incident-closed'
   | 'drift-flagged'
+  | 'verification-requested'
+  | 'verification-signed-off'
 
 export interface Notification {
   id: string
@@ -343,6 +363,7 @@ export interface CiPortalRecord {
   maintenanceOwnerName: string
   requirementsStatus: string
   uatStatus: string
+  verificationStatus: string
   healthStatus: string
   driftStatus: string
   group: Group

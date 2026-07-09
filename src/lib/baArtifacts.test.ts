@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canCompleteDeployment,
   canCompleteDevelopment,
+  deploymentGateBlockReason,
   isBaGateMandatory,
   requirementsComplete,
   uatPassed,
@@ -19,6 +20,7 @@ function baseProject(overrides?: Partial<Project>): Project {
     programManagerId: null,
     maintenanceOwnerId: null,
     operations: null,
+    verification: null,
     group: 'PROGs',
     site: 'Cebu',
     department: 'Test',
@@ -177,9 +179,61 @@ describe('baArtifacts', () => {
     expect(canCompleteDevelopment(baseProject({ tier: 'Tier1' }), de)).toBe(true)
   })
 
-  it('canCompleteDeployment blocks Tier3 without UAT pass except Admin', () => {
+  it('canCompleteDeployment requires both UAT and verification for Tier3', () => {
     const incomplete = baseProject({ tier: 'Tier3', currentStage: 'Deployment' })
     expect(canCompleteDeployment(incomplete, ba)).toBe(false)
     expect(canCompleteDeployment(incomplete, admin)).toBe(true)
+
+    const uatOnly = baseProject({
+      tier: 'Tier3',
+      uat: {
+        cases: [{ id: '1', description: 'x', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        signedOffBy: 'usr-ba',
+        signedOffAt: '2026-01-01',
+      },
+    })
+    expect(canCompleteDeployment(uatOnly, ba)).toBe(false)
+
+    const both = baseProject({
+      tier: 'Tier3',
+      uat: {
+        cases: [{ id: '1', description: 'x', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        signedOffBy: 'usr-ba',
+        signedOffAt: '2026-01-01',
+      },
+      verification: {
+        checks: [{ id: '1', description: 'x', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        verifiedBy: 'usr-data',
+        verifiedAt: '2026-01-01',
+      },
+    })
+    expect(canCompleteDeployment(both, ba)).toBe(true)
+    expect(canCompleteDeployment(baseProject({ tier: 'Tier1' }), de)).toBe(true)
+
+    const failedVer = baseProject({
+      tier: 'Tier3',
+      uat: {
+        cases: [{ id: '1', description: 'x', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        signedOffBy: 'usr-ba',
+        signedOffAt: '2026-01-01',
+      },
+      verification: {
+        checks: [{ id: '1', description: 'x', result: 'Fail' }],
+        outcome: 'Fail',
+        notes: 'Remediate',
+        verifiedBy: 'usr-data',
+        verifiedAt: '2026-01-01',
+      },
+    })
+    expect(canCompleteDeployment(failedVer, ba)).toBe(false)
+    expect(deploymentGateBlockReason(failedVer)).toMatch(/verification is Fail/i)
   })
 })

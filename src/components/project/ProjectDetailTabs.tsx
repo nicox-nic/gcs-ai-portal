@@ -22,6 +22,7 @@ import {
 } from '@/components/recommendations/RecommendationSections'
 import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
 import { OperationsPanel } from '@/components/project/OperationsPanel'
+import { VerificationPanel } from '@/components/project/VerificationPanel'
 import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
@@ -442,7 +443,10 @@ export function ProjectOverviewTab({
             <RequirementsPanel project={project} currentUser={currentUser} />
           )}
           {project.currentStage === 'Deployment' && (
-            <UatPanel project={project} currentUser={currentUser} />
+            <>
+              <UatPanel project={project} currentUser={currentUser} />
+              <VerificationPanel project={project} currentUser={currentUser} />
+            </>
           )}
           {(project.currentStage === 'Use' ||
             (project.status === 'Active' && project.operations)) && (
@@ -611,7 +615,10 @@ export function ProjectLifecycleTab({
               <RequirementsPanel project={project} currentUser={currentUser} />
             )}
             {isCurrent && meta.stage === 'Deployment' && (
-              <UatPanel project={project} currentUser={currentUser} />
+              <>
+                <UatPanel project={project} currentUser={currentUser} />
+                <VerificationPanel project={project} currentUser={currentUser} />
+              </>
             )}
             {isCurrent && meta.stage === 'Use' && (
               <OperationsPanel project={project} currentUser={currentUser} />

@@ -67,6 +67,7 @@ function baseProject(overrides?: Partial<Project>): Project {
     readiness: null,
     requirements: null,
     uat: null,
+    verification: null,
     operations: emptyOperations(),
     activeSince: '',
     lastActivityAt: '',

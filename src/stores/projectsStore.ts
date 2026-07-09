@@ -38,6 +38,12 @@ import {
   hasOpenIncident,
   isDriftFlagged,
 } from '@/lib/operations'
+import {
+  canEditVerification,
+  emptyVerification,
+  outcomeFromChecks,
+  verificationPassed,
+} from '@/lib/verification'
 import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
@@ -64,6 +70,7 @@ import type {
   HealthState,
   DriftState,
   IncidentSeverity,
+  VerificationArtifact,
 } from '@/types'
 
 type CreateProjectInput = {
@@ -204,6 +211,12 @@ type ProjectsStore = {
   confirmRequirements: (projectId: string, actor: User) => void
   saveUat: (projectId: string, artifact: UatArtifact, actor: User) => void
   signOffUat: (projectId: string, actor: User) => void
+  saveVerification: (
+    projectId: string,
+    artifact: Pick<VerificationArtifact, 'checks' | 'notes' | 'outcome'>,
+    actor: User,
+  ) => void
+  signOffVerification: (projectId: string, actor: User) => void
   runAging: () => void
   reactivateProject: (projectId: string, actor: User) => void
   resetProjects: () => void
@@ -347,6 +360,7 @@ function emptyV3Fields(timestamp: string) {
     readiness: null as Project['readiness'],
     requirements: null as Project['requirements'],
     uat: null as Project['uat'],
+    verification: null as Project['verification'],
     operations: null as Project['operations'],
     activeSince: null as string | null,
     lastActivityAt: timestamp,
@@ -578,6 +592,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             }
             if (toStage === 'Deployment' && fromStage !== 'Deployment') {
               pendingNotify.current.push({ project: next, kind: 'deployment-started' })
+              pendingNotify.current.push({ project: next, kind: 'verification-requested' })
             }
 
             return next
@@ -1190,10 +1205,15 @@ export const useProjectsStore = create<ProjectsStore>()(
         if (hours === null || hours === undefined || Number.isNaN(hours) || hours <= 0) {
           throw new Error('Report benefit hours before submitting for sponsor approval.')
         }
-        if (isBaGateMandatory(project) && !uatPassed(project) && actor.role !== 'Admin') {
-          throw new Error(
-            'Tier2/Tier3 projects require passing BA-signed UAT before sponsor approval.',
-          )
+        if (isBaGateMandatory(project) && actor.role !== 'Admin') {
+          const missing: string[] = []
+          if (!uatPassed(project)) missing.push('passing BA-signed UAT')
+          if (!verificationPassed(project)) missing.push('passing DE verification sign-off')
+          if (missing.length > 0) {
+            throw new Error(
+              `Tier2/Tier3 projects require ${missing.join(' and ')} before sponsor approval.`,
+            )
+          }
         }
 
         const timestamp = nowIso()
@@ -1930,6 +1950,101 @@ export const useProjectsStore = create<ProjectsStore>()(
         }))
         const updated = get().projects.find((p) => p.id === projectId)
         if (updated) notify(updated, 'uat-signed-off', actor)
+      },
+
+      saveVerification: (projectId, artifact, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditVerification(project, actor)) {
+          throw new Error(
+            'Only the assigned Data Engineer, Admin, or DE (when unassigned) can edit verification.',
+          )
+        }
+        const timestamp = nowIso()
+        const base = project.verification ?? emptyVerification()
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  verification: {
+                    ...base,
+                    checks: artifact.checks,
+                    notes: artifact.notes,
+                    outcome: artifact.outcome,
+                    verifiedBy: null,
+                    verifiedAt: null,
+                  },
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      signOffVerification: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditVerification(project, actor)) {
+          throw new Error(
+            'Only the assigned Data Engineer, Admin, or DE (when unassigned) can sign off verification.',
+          )
+        }
+        const base = project.verification ?? emptyVerification()
+        const checks =
+          base.checks.length > 0
+            ? base.checks
+            : emptyVerification().checks.map((c) => ({ ...c, result: 'Pass' as const }))
+        const outcome = outcomeFromChecks(checks)
+        if (outcome === 'Fail') {
+          // Allow signing Fail so remediation is recorded, but Deployment stays blocked.
+        } else if (outcome !== 'Pass' && actor.role !== 'Admin') {
+          throw new Error(
+            'All verification checks must Pass (or mark Fail) before signing off. Tier1 may self-attest.',
+          )
+        }
+        if (checks.length < 1 && actor.role !== 'Admin') {
+          throw new Error('Add at least one verification check before signing off.')
+        }
+        const timestamp = nowIso()
+        const finalOutcome = outcome === 'Pending' && actor.role === 'Admin' ? 'Pass' : outcome
+        if (finalOutcome === 'Pending') {
+          throw new Error('Complete all verification checks before signing off.')
+        }
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `DE verification signed off (${finalOutcome}).`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  verification: {
+                    ...base,
+                    checks,
+                    outcome: finalOutcome,
+                    verifiedBy: actor.id,
+                    verifiedAt: timestamp,
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated && finalOutcome === 'Pass') {
+          notify(updated, 'verification-signed-off', actor)
+        }
       },
 
       runAging: () => {

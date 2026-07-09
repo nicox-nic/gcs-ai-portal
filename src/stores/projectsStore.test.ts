@@ -487,6 +487,7 @@ describe('projectsStore Phase 8 BA gates', () => {
       businessAnalystId: 'usr-ba',
       reportedBenefitHours: 10,
       uat: null,
+      verification: null,
     })
     const de = userByRole('DataEngineering')
     expect(() =>
@@ -496,5 +497,77 @@ describe('projectsStore Phase 8 BA gates', () => {
         de,
       ),
     ).toThrow(/UAT/i)
+  })
+
+  it('submitForSponsorApproval is blocked without verification for Tier3 even with UAT', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier3',
+      currentStage: 'Use',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'Completed',
+        Use: 'InProgress',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      reportedBenefitHours: 10,
+      uat: {
+        cases: [{ id: '1', description: 'ok', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        signedOffBy: 'usr-ba',
+        signedOffAt: '2026-01-01',
+      },
+      verification: null,
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore.getState().submitForSponsorApproval(
+        project.id,
+        { reportedBenefitHours: 10 },
+        de,
+      ),
+    ).toThrow(/verification/i)
+  })
+
+  it('advanceStage throws on Deployment Complete without verification for Tier2', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'Deployment',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'InProgress',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      dataEngineerId: 'usr-data',
+      uat: {
+        cases: [{ id: '1', description: 'ok', result: 'Pass' }],
+        outcome: 'Pass',
+        notes: '',
+        signedOffBy: 'usr-ba',
+        signedOffAt: '2026-01-01',
+      },
+      verification: null,
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Deployment', 'Completed', de, 'Done'),
+    ).toThrow(/verification/i)
   })
 })

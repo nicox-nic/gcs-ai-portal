@@ -3,6 +3,7 @@ import { SEED_USERS } from '@/data/seedRoles'
 import { GROUP_HEADCOUNT, SITE_HEADCOUNT } from '@/data/seedOrg'
 import { requirementsComplete, uatPassed } from '@/lib/baArtifacts'
 import { hasOpenIncident, isDriftFlagged } from '@/lib/operations'
+import { verificationPassed } from '@/lib/verification'
 import { PROJECT_STATUSES, STATUS_META } from '@/lib/projectStatus'
 import { TIER_META } from '@/lib/tiering'
 import { ROLE_STYLES } from '@/lib/roleStyles'
@@ -132,6 +133,7 @@ export type DashboardStats = {
   baRequirementsQueue: number
   baUatQueue: number
   deDevelopmentQueue: number
+  deVerificationQueue: number
   pmReviewQueue: number
   pmDeploymentQueue: number
   msActiveQueue: number
@@ -257,6 +259,15 @@ export function computeDashboardStats(
           p.dataEngineerId === uid &&
           p.status === 'Active' &&
           p.currentStage === 'Development',
+      ).length
+    : 0
+  const deVerificationQueue = uid
+    ? projects.filter(
+        (p) =>
+          p.dataEngineerId === uid &&
+          p.status === 'Active' &&
+          p.currentStage === 'Deployment' &&
+          !verificationPassed(p),
       ).length
     : 0
   const pmReviewQueue = projects.filter((p) => p.status === 'Submitted').length
@@ -508,6 +519,7 @@ export function computeDashboardStats(
     baRequirementsQueue,
     baUatQueue,
     deDevelopmentQueue,
+    deVerificationQueue,
     pmReviewQueue,
     pmDeploymentQueue,
     msActiveQueue,

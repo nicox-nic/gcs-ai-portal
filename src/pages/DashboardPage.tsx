@@ -118,11 +118,23 @@ function RoleCallout() {
       className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
       icon: ShieldCheck,
     }
-  } else if (currentUser.role === 'DataEngineering' && stats.deDevelopmentQueue > 0) {
+  } else if (
+    currentUser.role === 'DataEngineering' &&
+    (stats.deDevelopmentQueue > 0 || stats.deVerificationQueue > 0)
+  ) {
+    const parts: string[] = []
+    if (stats.deVerificationQueue > 0) {
+      parts.push(
+        `${stats.deVerificationQueue} awaiting verification`,
+      )
+    }
+    if (stats.deDevelopmentQueue > 0) {
+      parts.push(`${stats.deDevelopmentQueue} in Development`)
+    }
     content = {
-      text: 'Your DE build queue:',
-      suffix: ' in Development',
-      count: stats.deDevelopmentQueue,
+      text: 'Your DE queue:',
+      suffix: ` — ${parts.join('; ')}`,
+      count: stats.deDevelopmentQueue + stats.deVerificationQueue,
       className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
       icon: ShieldCheck,
     }
@@ -218,8 +230,11 @@ function RoleCallout() {
             ? '/projects?status=ForSponsorApproval'
             : content.text.startsWith('Your BA queue')
               ? '/projects?status=Active&assigned=ba'
-              : content.text.startsWith('Your DE build')
-                ? '/projects?stage=Development&assigned=de'
+              : content.text.startsWith('Your DE queue') ||
+                  content.text.startsWith('Your DE build')
+                ? stats.deVerificationQueue > 0
+                  ? '/projects?stage=Deployment&assigned=de'
+                  : '/projects?stage=Development&assigned=de'
                 : content.text.startsWith('Your PM queue')
                   ? stats.pmReviewQueue > 0
                     ? '/projects?status=Submitted'

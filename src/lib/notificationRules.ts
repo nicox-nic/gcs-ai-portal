@@ -107,6 +107,16 @@ export function recipientsFor(
         to: ms,
         cc: unique([...gov, ...de]),
       }
+    case 'verification-requested':
+      return {
+        to: de,
+        cc: unique([...gov, ...pm]),
+      }
+    case 'verification-signed-off':
+      return {
+        to: pm,
+        cc: gov,
+      }
     default:
       return { to: unique([submitter]), cc: gov }
   }
@@ -141,6 +151,8 @@ const SUBJECTS: Record<NotificationKind, (title: string) => string> = {
   'incident-opened': (t) => `[GCS AI] Incident opened — ${t}`,
   'incident-closed': (t) => `[GCS AI] Incident closed — ${t}`,
   'drift-flagged': (t) => `[GCS AI] Model drift flagged — ${t}`,
+  'verification-requested': (t) => `[GCS AI] Verification needed — ${t}`,
+  'verification-signed-off': (t) => `[GCS AI] Verification signed off — ${t}`,
 }
 
 function defaultBody(kind: NotificationKind, project: Project, actor?: User | null): string {

@@ -29,6 +29,7 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     readiness: null,
     requirements: null,
     uat: null,
+    verification: null,
     operations: null,
     activeSince: opts?.activeSince ?? null,
     lastActivityAt: updatedAt,
@@ -59,6 +60,99 @@ function passedUat(at: string, description: string) {
     notes: '',
     signedOffBy: 'usr-ba',
     signedOffAt: at,
+  }
+}
+
+function passedVerification(at: string) {
+  return {
+    checks: [
+      {
+        id: 'chk-config',
+        description: 'Tool/model configured and access provisioned',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-output',
+        description: 'Model output validated against acceptance criteria',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-controls',
+        description: 'Controls implemented (per risk tier)',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-prod',
+        description: 'Production readiness confirmed',
+        result: 'Pass' as const,
+      },
+    ],
+    outcome: 'Pass' as const,
+    notes: '',
+    verifiedBy: 'usr-data',
+    verifiedAt: at,
+  }
+}
+
+function pendingVerification() {
+  return {
+    checks: [
+      {
+        id: 'chk-config',
+        description: 'Tool/model configured and access provisioned',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-output',
+        description: 'Model output validated against acceptance criteria',
+        result: 'Untested' as const,
+      },
+      {
+        id: 'chk-controls',
+        description: 'Controls implemented (per risk tier)',
+        result: 'Untested' as const,
+      },
+      {
+        id: 'chk-prod',
+        description: 'Production readiness confirmed',
+        result: 'Untested' as const,
+      },
+    ],
+    outcome: 'Pending' as const,
+    notes: 'Awaiting DE sign-off on remaining checks.',
+    verifiedBy: null,
+    verifiedAt: null,
+  }
+}
+
+function failedVerification(at: string) {
+  return {
+    checks: [
+      {
+        id: 'chk-config',
+        description: 'Tool/model configured and access provisioned',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-output',
+        description: 'Model output validated against acceptance criteria',
+        result: 'Fail' as const,
+      },
+      {
+        id: 'chk-controls',
+        description: 'Controls implemented (per risk tier)',
+        result: 'Pass' as const,
+      },
+      {
+        id: 'chk-prod',
+        description: 'Production readiness confirmed',
+        result: 'Fail' as const,
+      },
+    ],
+    outcome: 'Fail' as const,
+    notes: 'Output validation failed on holdout; production readiness blocked until remediations land.',
+    verifiedBy: 'usr-data',
+    verifiedAt: at,
   }
 }
 
@@ -390,7 +484,133 @@ export const SEED_PROJECTS: Project[] = [
       signedOffBy: null,
       signedOffAt: null,
     },
+    verification: pendingVerification(),
     operations: opsOpenHighIncident(daysAgo(1)),
+    sponsorValidated: false,
+  },
+  {
+    id: 'prj-073',
+    title: 'Field Parts Lookup Assistant',
+    submitterId: 'usr-submitter',
+    sponsorId: 'usr-sponsor',
+    group: 'PROGs',
+    site: 'Cebu',
+    department: 'Customer Service Ops',
+    status: 'Active',
+    currentStage: 'Deployment',
+    stageStatus: stageStatus({
+      Assessment: 'Completed',
+      Policy: 'Completed',
+      SupplierOversight: 'Completed',
+      Development: 'Completed',
+      Deployment: 'InProgress',
+    }),
+    submission: {
+      useCase: 'Assist field engineers looking up approved spare parts for a given product family',
+      problem:
+        'Engineers waste time searching multiple catalogs and often order superseded part numbers.',
+      goal: 'Surface the current approved part and substitute list from a governed knowledge base in under 10 seconds.',
+      targetUsers: 'Field service engineers',
+      expectedOutcome: 'Cut parts lookup time by 50% and reduce wrong-part orders.',
+      dataSources: 'SAP material master, SharePoint parts KB',
+      dataSensitivity: 'Internal',
+      dataAccessStatus: 'Available',
+      skillLevelAvailable: 'Intermediate',
+      existingTools: ['SharePoint', 'Copilot Studio'],
+      integrationTargets: ['Teams', 'SharePoint'],
+      estimatedUsers: 40,
+      expectedBenefitHours: 25,
+    },
+    recommendations: triageRecommendations,
+    alternativeRecommendations: triageAlternatives,
+    recommendedComboIds: ['combo-triage-agent'],
+    toolStack: [
+      { toolId: 'tool-copilot-studio', role: 'primary' },
+      { toolId: 'tool-sharepoint', role: 'supporting', usageNote: 'Parts KB' },
+    ],
+    createdAt: daysAgo(60),
+    updatedAt: daysAgo(1),
+    auditLog: [
+      transition(
+        {
+          projectId: 'prj-073',
+          fromStage: null,
+          toStage: 'Assessment',
+          fromStatus: null,
+          toStatus: 'InProgress',
+          actorUserId: 'usr-submitter',
+          actorRole: 'Submitter',
+          timestamp: daysAgo(60),
+          note: 'Project submitted for qualification.',
+        },
+        1,
+      ),
+      transition(
+        {
+          projectId: 'prj-073',
+          fromStage: 'Development',
+          toStage: 'Development',
+          fromStatus: 'InProgress',
+          toStatus: 'Completed',
+          actorUserId: 'usr-data',
+          actorRole: 'DataEngineering',
+          timestamp: daysAgo(10),
+          note: 'Topics and KB grounding validated in staging.',
+        },
+        2,
+      ),
+      transition(
+        {
+          projectId: 'prj-073',
+          fromStage: 'Deployment',
+          toStage: 'Deployment',
+          fromStatus: 'NotStarted',
+          toStatus: 'InProgress',
+          actorUserId: 'usr-pm',
+          actorRole: 'AIProgramManager',
+          timestamp: daysAgo(4),
+          note: 'Pilot to 15 Cebu field engineers.',
+        },
+        3,
+      ),
+    ],
+    reportedBenefitHours: null,
+    ...v3Defaults(daysAgo(1), { activeSince: daysAgo(1) }),
+    ...assessmentBundle({
+      tier: 'Tier2',
+      risk: 'Medium',
+      reward: 'TeamProject',
+      rationale: 'Internal catalog lookup; limited customer data exposure.',
+      primaryTrue: 2,
+    }),
+    businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
+    requirements: confirmedRequirements(
+      daysAgo(12),
+      'Assistant must return only approved part numbers from the governed KB.',
+    ),
+    uat: {
+      cases: [
+        {
+          id: 'uat-073-1',
+          description: 'Engineer finds correct current part within 10 seconds.',
+          result: 'Pass',
+        },
+        {
+          id: 'uat-073-2',
+          description: 'Superseded part numbers are flagged with substitute.',
+          result: 'Pass',
+        },
+      ],
+      outcome: 'Pass',
+      notes: 'BA UAT passed — blocked on DE verification Fail.',
+      signedOffBy: 'usr-ba',
+      signedOffAt: daysAgo(2),
+    },
+    verification: failedVerification(daysAgo(1)),
+    operations: null,
     sponsorValidated: false,
   },
   {
@@ -877,6 +1097,7 @@ export const SEED_PROJECTS: Project[] = [
       'UAT report exports must match the approved template columns.',
     ),
     uat: passedUat(daysAgo(30), 'Ops lead accepts automated UAT report for one cycle.'),
+    verification: passedVerification(daysAgo(28)),
     operations: opsWatchWithClosedIncident(daysAgo(50), daysAgo(45)),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
@@ -1011,6 +1232,7 @@ export const SEED_PROJECTS: Project[] = [
       'Dashboard refreshes overnight from approved Marketing data mart.',
     ),
     uat: passedUat(daysAgo(8), 'Marketing lead accepts published dashboard layout.'),
+    verification: passedVerification(daysAgo(7)),
     operations: opsHealthy(daysAgo(1)),
     sponsorValidated: false,
   },
@@ -1162,6 +1384,7 @@ export const SEED_PROJECTS: Project[] = [
       'Forecast must not auto-reorder parts without planner confirmation.',
     ),
     uat: passedUat(daysAgo(70), 'Planners accept forecast accuracy on Costa Rica pilot.'),
+    verification: passedVerification(daysAgo(68)),
     operations: opsHealthy(daysAgo(10)),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
@@ -1606,6 +1829,7 @@ export const SEED_PROJECTS: Project[] = [
       'Roster suggestions must be editable before publish.',
     ),
     uat: passedUat(daysAgo(10), 'Shift leads accept roster assist for one week.'),
+    verification: passedVerification(daysAgo(12)),
     sponsorValidated: false,
   },
   {

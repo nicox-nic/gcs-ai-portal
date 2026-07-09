@@ -4,6 +4,7 @@ import type {
   UatArtifact,
   User,
 } from '@/types'
+import { verificationPassed } from '@/lib/verification'
 
 /** Tier2/Tier3 require BA sign-off before stage Complete; Tier1 is optional/self-attest. */
 export function isBaGateMandatory(project: Project): boolean {
@@ -46,12 +47,12 @@ export function canCompleteDevelopment(project: Project, actor: User): boolean {
 
 /**
  * Whether Deployment → Completed is allowed for this actor.
- * Tier1: always. Tier2/3: needs passing signed-off UAT unless Admin.
+ * Tier1: always. Tier2/3: needs BOTH passing UAT and DE verification unless Admin.
  */
 export function canCompleteDeployment(project: Project, actor: User): boolean {
   if (actor.role === 'Admin') return true
   if (!isBaGateMandatory(project)) return true
-  return uatPassed(project)
+  return uatPassed(project) && verificationPassed(project)
 }
 
 export function developmentGateBlockReason(project: Project): string | null {
@@ -62,11 +63,30 @@ export function developmentGateBlockReason(project: Project): string | null {
 
 export function deploymentGateBlockReason(project: Project): string | null {
   if (!isBaGateMandatory(project)) return null
-  if (uatPassed(project)) return null
-  if (project.uat?.outcome === 'Fail') {
-    return 'UAT outcome is Fail — remediate with Data Engineering, then re-run UAT and sign off (Admin may override).'
+  const uatOk = uatPassed(project)
+  const verOk = verificationPassed(project)
+  if (uatOk && verOk) return null
+
+  const parts: string[] = []
+  if (!uatOk) {
+    if (project.uat?.outcome === 'Fail') {
+      parts.push(
+        'UAT is Fail — remediate with Data Engineering, then re-run UAT and sign off',
+      )
+    } else {
+      parts.push('BA UAT must Pass and be signed off')
+    }
   }
-  return 'UAT must Pass and be signed off by the assigned Business Analyst before Deployment can complete (Admin may override).'
+  if (!verOk) {
+    if (project.verification?.outcome === 'Fail') {
+      parts.push(
+        'DE verification is Fail — remediate checks, then re-sign off verification',
+      )
+    } else {
+      parts.push('DE tool & model verification must Pass and be signed off')
+    }
+  }
+  return `${parts.join('; ')} before Deployment can complete (Admin may override).`
 }
 
 export function emptyRequirements(): RequirementsArtifact {
