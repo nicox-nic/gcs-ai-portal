@@ -14,6 +14,8 @@ function baseProject(overrides?: Partial<Project>): Project {
     maintenanceOwnerId: null,
     operations: null,
     verification: null,
+    usesExternalVendor: false,
+    vendorSaq: null,
     group: 'Engineering',
     site: 'Cebu',
     department: 'Test',

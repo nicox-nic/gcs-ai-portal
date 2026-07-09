@@ -82,6 +82,14 @@ function RoleCallout() {
       className: 'border-amber-200 bg-amber-50 text-amber-900',
       icon: ShieldCheck,
     }
+  } else if (currentUser.role === 'RiskCompliance' && stats.rcSaqQueue > 0) {
+    content = {
+      text: 'Vendor SAQ queue:',
+      suffix: ' awaiting Vendor AI-SAQ',
+      count: stats.rcSaqQueue,
+      className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
+      icon: ShieldCheck,
+    }
   } else if (currentUser.role === 'RiskCompliance' && stats.pendingQualification > 0) {
     content = {
       text: 'Pending qualification:',
@@ -224,6 +232,8 @@ function RoleCallout() {
       ? '/projects?status=ForAssessment'
       : content.text.startsWith('EHS review')
         ? '/projects?status=ForEHSReview'
+      : content.text.startsWith('Vendor SAQ')
+        ? '/projects?stage=SupplierOversight'
         : content.text.startsWith('Idle')
           ? '/projects?status=Idle'
           : content.text.startsWith('Awaiting your validation')

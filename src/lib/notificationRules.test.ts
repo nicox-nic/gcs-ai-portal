@@ -60,6 +60,17 @@ describe('recipientsFor (Phase 9–10)', () => {
     expect(recipientsFor('verification-signed-off', project).to).toEqual(['usr-pm'])
   })
 
+  it('saq-requested TO is role-wide R&C; saq-completed TO is Gov/PM', () => {
+    const project = baseProject({
+      programManagerId: 'usr-pm',
+      usesExternalVendor: true,
+    })
+    expect(recipientsFor('saq-requested', project).to).toContain('usr-risk')
+    const done = recipientsFor('saq-completed', project)
+    expect(done.to).toContain('usr-pm')
+    expect(done.cc).toContain('usr-risk')
+  })
+
   it('uat-signed-off TO prefers assigned PM and DE', () => {
     const project = baseProject({
       dataEngineerId: 'usr-data',

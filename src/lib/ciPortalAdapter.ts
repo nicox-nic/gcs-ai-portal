@@ -6,6 +6,7 @@ import { SEED_USERS } from '@/data/seedRoles'
 import { requirementsCiLabel, uatCiLabel } from '@/lib/baArtifacts'
 import { driftCiLabel, healthCiLabel } from '@/lib/operations'
 import { verificationCiLabel } from '@/lib/verification'
+import { saqCiLabel } from '@/lib/vendorSaq'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { CiPortalRecord, Project } from '@/types'
 
@@ -36,6 +37,7 @@ function toRecord(project: Project): CiPortalRecord {
     requirementsStatus: requirementsCiLabel(project),
     uatStatus: uatCiLabel(project),
     verificationStatus: verificationCiLabel(project),
+    supplierSaqStatus: saqCiLabel(project),
     healthStatus: healthCiLabel(project),
     driftStatus: driftCiLabel(project),
     group: project.group,

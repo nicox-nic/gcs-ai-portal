@@ -50,6 +50,7 @@ export function CiPortalPage() {
               <TableHead className="text-xs">Requirements</TableHead>
               <TableHead className="text-xs">UAT</TableHead>
               <TableHead className="text-xs">Verification</TableHead>
+              <TableHead className="text-xs">Supplier SAQ</TableHead>
               <TableHead className="text-xs">Health</TableHead>
               <TableHead className="text-xs">Drift</TableHead>
               <TableHead className="text-xs">Group / Site</TableHead>
@@ -98,6 +99,9 @@ export function CiPortalPage() {
                 <TableCell className="text-[11px] text-stone-700">{row.uatStatus}</TableCell>
                 <TableCell className="text-[11px] text-stone-700">
                   {row.verificationStatus}
+                </TableCell>
+                <TableCell className="text-[11px] text-stone-700">
+                  {row.supplierSaqStatus}
                 </TableCell>
                 <TableCell className="text-[11px] text-stone-700">{row.healthStatus}</TableCell>
                 <TableCell className="text-[11px] text-stone-700">{row.driftStatus}</TableCell>

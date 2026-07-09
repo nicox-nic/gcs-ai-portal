@@ -224,6 +224,26 @@ export interface VerificationArtifact {
   verifiedAt: string | null
 }
 
+export type SaqResponse = 'Yes' | 'No' | 'NA'
+export type SaqOutcome = 'Pass' | 'Fail' | 'Waived' | 'Pending'
+
+export interface SaqAnswer {
+  id: string
+  section: string
+  question: string
+  /** null = unanswered */
+  response: SaqResponse | null
+  note: string
+}
+
+export interface SaqArtifact {
+  answers: SaqAnswer[]
+  outcome: SaqOutcome
+  notes: string
+  completedBy: string | null
+  completedAt: string | null
+}
+
 export type HealthState = 'Healthy' | 'Watch' | 'Incident'
 export type DriftState = 'None' | 'Suspected' | 'Confirmed'
 export type IncidentSeverity = 'Low' | 'Medium' | 'High'
@@ -293,6 +313,10 @@ export interface Project {
   verification: VerificationArtifact | null
   /** M&S operations overlay — null until go-live. */
   operations: OperationsRecord | null
+  /** True when the project uses an external / third-party AI vendor (SAQ scope). */
+  usesExternalVendor: boolean
+  /** Vendor AI-SAQ — null until Supplier Oversight work begins (or when not required). */
+  vendorSaq: SaqArtifact | null
   activeSince: string | null
   lastActivityAt: string
   sponsorDecision: 'Approved' | 'Disapproved' | null
@@ -334,6 +358,8 @@ export type NotificationKind =
   | 'drift-flagged'
   | 'verification-requested'
   | 'verification-signed-off'
+  | 'saq-requested'
+  | 'saq-completed'
 
 export interface Notification {
   id: string
@@ -364,6 +390,7 @@ export interface CiPortalRecord {
   requirementsStatus: string
   uatStatus: string
   verificationStatus: string
+  supplierSaqStatus: string
   healthStatus: string
   driftStatus: string
   group: Group

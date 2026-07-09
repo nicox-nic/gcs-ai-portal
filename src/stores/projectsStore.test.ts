@@ -570,4 +570,58 @@ describe('projectsStore Phase 8 BA gates', () => {
         .advanceStage(project.id, 'Deployment', 'Completed', de, 'Done'),
     ).toThrow(/verification/i)
   })
+
+  it('advanceStage throws on SupplierOversight Complete without SAQ when vendor required', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'SupplierOversight',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'InProgress',
+        Development: 'NotStarted',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      usesExternalVendor: true,
+      vendorSaq: null,
+    })
+    const rc = userByRole('RiskCompliance')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'SupplierOversight', 'Completed', rc, 'Done'),
+    ).toThrow(/SAQ/i)
+  })
+
+  it('advanceStage allows SupplierOversight Complete when internal-only', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier1',
+      currentStage: 'SupplierOversight',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'InProgress',
+        Development: 'NotStarted',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      usesExternalVendor: false,
+      vendorSaq: null,
+    })
+    const rc = userByRole('RiskCompliance')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'SupplierOversight', 'Completed', rc, 'Internal-only'),
+    ).not.toThrow()
+  })
 })

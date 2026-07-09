@@ -4,6 +4,7 @@ import { GROUP_HEADCOUNT, SITE_HEADCOUNT } from '@/data/seedOrg'
 import { requirementsComplete, uatPassed } from '@/lib/baArtifacts'
 import { hasOpenIncident, isDriftFlagged } from '@/lib/operations'
 import { verificationPassed } from '@/lib/verification'
+import { isSaqRequired, saqComplete } from '@/lib/vendorSaq'
 import { PROJECT_STATUSES, STATUS_META } from '@/lib/projectStatus'
 import { TIER_META } from '@/lib/tiering'
 import { ROLE_STYLES } from '@/lib/roleStyles'
@@ -134,6 +135,7 @@ export type DashboardStats = {
   baUatQueue: number
   deDevelopmentQueue: number
   deVerificationQueue: number
+  rcSaqQueue: number
   pmReviewQueue: number
   pmDeploymentQueue: number
   msActiveQueue: number
@@ -270,6 +272,13 @@ export function computeDashboardStats(
           !verificationPassed(p),
       ).length
     : 0
+  const rcSaqQueue = projects.filter(
+    (p) =>
+      p.status === 'Active' &&
+      p.currentStage === 'SupplierOversight' &&
+      isSaqRequired(p) &&
+      !saqComplete(p),
+  ).length
   const pmReviewQueue = projects.filter((p) => p.status === 'Submitted').length
   const pmDeploymentQueue = uid
     ? projects.filter(
@@ -520,6 +529,7 @@ export function computeDashboardStats(
     baUatQueue,
     deDevelopmentQueue,
     deVerificationQueue,
+    rcSaqQueue,
     pmReviewQueue,
     pmDeploymentQueue,
     msActiveQueue,

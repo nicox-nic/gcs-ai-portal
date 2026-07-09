@@ -68,6 +68,8 @@ function baseProject(overrides?: Partial<Project>): Project {
     requirements: null,
     uat: null,
     verification: null,
+    usesExternalVendor: false,
+    vendorSaq: null,
     operations: emptyOperations(),
     activeSince: '',
     lastActivityAt: '',

@@ -39,6 +39,14 @@ import {
   isDriftFlagged,
 } from '@/lib/operations'
 import {
+  canCompleteSupplierOversight,
+  canEditSaq,
+  canSetUsesExternalVendor,
+  emptySaq,
+  isSaqRequired,
+  supplierGateBlockReason,
+} from '@/lib/vendorSaq'
+import {
   canEditVerification,
   emptyVerification,
   outcomeFromChecks,
@@ -70,6 +78,8 @@ import type {
   HealthState,
   DriftState,
   IncidentSeverity,
+  SaqArtifact,
+  SaqOutcome,
   VerificationArtifact,
 } from '@/types'
 
@@ -217,6 +227,13 @@ type ProjectsStore = {
     actor: User,
   ) => void
   signOffVerification: (projectId: string, actor: User) => void
+  setUsesExternalVendor: (projectId: string, value: boolean, actor: User) => void
+  saveSaq: (
+    projectId: string,
+    artifact: Pick<SaqArtifact, 'answers' | 'notes' | 'outcome'>,
+    actor: User,
+  ) => void
+  completeSaq: (projectId: string, outcome: SaqOutcome, actor: User) => void
   runAging: () => void
   reactivateProject: (projectId: string, actor: User) => void
   resetProjects: () => void
@@ -362,6 +379,8 @@ function emptyV3Fields(timestamp: string) {
     uat: null as Project['uat'],
     verification: null as Project['verification'],
     operations: null as Project['operations'],
+    usesExternalVendor: false,
+    vendorSaq: null as Project['vendorSaq'],
     activeSince: null as string | null,
     lastActivityAt: timestamp,
     sponsorDecision: null as Project['sponsorDecision'],
@@ -539,6 +558,18 @@ export const useProjectsStore = create<ProjectsStore>()(
           )
         }
 
+        if (
+          currentStage === 'SupplierOversight' &&
+          toStage === 'SupplierOversight' &&
+          toStatus === 'Completed' &&
+          !canCompleteSupplierOversight(project, actor)
+        ) {
+          throw new Error(
+            supplierGateBlockReason(project) ??
+              'Vendor AI-SAQ must be completed before Supplier Oversight can complete.',
+          )
+        }
+
         // Box so TS tracks mutation inside the set() callback.
         const pendingNotify: {
           current: { project: Project; kind: Parameters<typeof notify>[1] }[]
@@ -593,6 +624,13 @@ export const useProjectsStore = create<ProjectsStore>()(
             if (toStage === 'Deployment' && fromStage !== 'Deployment') {
               pendingNotify.current.push({ project: next, kind: 'deployment-started' })
               pendingNotify.current.push({ project: next, kind: 'verification-requested' })
+            }
+            if (
+              toStage === 'SupplierOversight' &&
+              fromStage !== 'SupplierOversight' &&
+              isSaqRequired(next)
+            ) {
+              pendingNotify.current.push({ project: next, kind: 'saq-requested' })
             }
 
             return next
@@ -2044,6 +2082,135 @@ export const useProjectsStore = create<ProjectsStore>()(
         const updated = get().projects.find((p) => p.id === projectId)
         if (updated && finalOutcome === 'Pass') {
           notify(updated, 'verification-signed-off', actor)
+        }
+      },
+
+      setUsesExternalVendor: (projectId, value, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canSetUsesExternalVendor(actor)) {
+          throw new Error(
+            'Only Risk & Compliance, Governance Lead, or Admin can set the third-party vendor flag.',
+          )
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: value
+            ? 'Marked as using third-party AI vendor (Vendor AI-SAQ required).'
+            : 'Marked as internal-only (Vendor AI-SAQ not required).',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  usesExternalVendor: value,
+                  vendorSaq: value
+                    ? (p.vendorSaq ?? emptySaq())
+                    : p.vendorSaq,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (
+          updated &&
+          value &&
+          updated.currentStage === 'SupplierOversight'
+        ) {
+          notify(updated, 'saq-requested', actor)
+        }
+      },
+
+      saveSaq: (projectId, artifact, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditSaq(project, actor)) {
+          throw new Error('Only Risk & Compliance or Admin can edit the Vendor AI-SAQ.')
+        }
+        const timestamp = nowIso()
+        const base = project.vendorSaq ?? emptySaq()
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  usesExternalVendor: true,
+                  vendorSaq: {
+                    ...base,
+                    answers: structuredClone(artifact.answers),
+                    notes: artifact.notes,
+                    outcome: artifact.outcome,
+                    completedBy: null,
+                    completedAt: null,
+                  },
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      completeSaq: (projectId, outcome, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditSaq(project, actor)) {
+          throw new Error('Only Risk & Compliance or Admin can complete the Vendor AI-SAQ.')
+        }
+        if (outcome !== 'Pass' && outcome !== 'Fail' && outcome !== 'Waived') {
+          throw new Error('SAQ outcome must be Pass, Fail, or Waived.')
+        }
+        const base = project.vendorSaq ?? emptySaq()
+        if (base.answers.some((a) => a.response === null)) {
+          throw new Error('Answer every SAQ question (Yes / No / N/A) before completing.')
+        }
+        if (outcome === 'Waived' && !base.notes.trim()) {
+          throw new Error('Waive requires a justification note.')
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Vendor AI-SAQ completed (${outcome}).`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  usesExternalVendor: true,
+                  vendorSaq: {
+                    ...base,
+                    outcome,
+                    completedBy: actor.id,
+                    completedAt: timestamp,
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated && (outcome === 'Pass' || outcome === 'Waived')) {
+          notify(updated, 'saq-completed', actor)
         }
       },
 

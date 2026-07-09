@@ -24,6 +24,8 @@ function stubProject(partial: {
     maintenanceOwnerId: null,
     operations: null,
     verification: null,
+    usesExternalVendor: false,
+    vendorSaq: null,
     group: 'Engineering',
     site: 'Cebu',
     department: 'Demo',

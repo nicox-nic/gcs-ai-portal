@@ -23,6 +23,7 @@ import {
 import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
 import { OperationsPanel } from '@/components/project/OperationsPanel'
 import { VerificationPanel } from '@/components/project/VerificationPanel'
+import { VendorSaqPanel } from '@/components/project/VendorSaqPanel'
 import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
@@ -48,6 +49,10 @@ import {
   deploymentGateBlockReason,
   developmentGateBlockReason,
 } from '@/lib/baArtifacts'
+import {
+  canCompleteSupplierOversight,
+  supplierGateBlockReason,
+} from '@/lib/vendorSaq'
 import {
   LIFECYCLE_STAGES,
   canActOnStage,
@@ -158,13 +163,17 @@ function TransitionButtons({
           baGateBlocked = !currentUser || !canCompleteDeployment(project, currentUser)
           baGateReason = deploymentGateBlockReason(project) ??
             (!currentUser ? 'Sign in to complete this stage.' : null)
+        } else if (isComplete && stage === 'SupplierOversight') {
+          baGateBlocked = !currentUser || !canCompleteSupplierOversight(project, currentUser)
+          baGateReason = supplierGateBlockReason(project) ??
+            (!currentUser ? 'Sign in to complete this stage.' : null)
         }
 
         const enabled = canAct && !baGateBlocked
         const tooltipText = !canAct
           ? `Only ${humanizeRole(meta.primaryOwnerRole)} or supporting roles can act on this stage.`
           : baGateBlocked
-            ? baGateReason ?? 'BA gate not met.'
+            ? baGateReason ?? 'Gate not met.'
             : null
 
         const button = (
@@ -439,6 +448,9 @@ export function ProjectOverviewTab({
             )}
           </div>
 
+          {project.currentStage === 'SupplierOversight' && (
+            <VendorSaqPanel project={project} currentUser={currentUser} />
+          )}
           {project.currentStage === 'Development' && (
             <RequirementsPanel project={project} currentUser={currentUser} />
           )}
@@ -611,6 +623,9 @@ export function ProjectLifecycleTab({
                 <RoleBadge key={role} role={role} />
               ))}
             </div>
+            {isCurrent && meta.stage === 'SupplierOversight' && (
+              <VendorSaqPanel project={project} currentUser={currentUser} />
+            )}
             {isCurrent && meta.stage === 'Development' && (
               <RequirementsPanel project={project} currentUser={currentUser} />
             )}
