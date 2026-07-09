@@ -21,7 +21,6 @@ import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, User } from '@/types'
 
 const REVIEW_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
-const EHS_ROLES: User['role'][] = ['EHS', 'Admin']
 
 type GateDialog =
   | { kind: 'approve' }
@@ -54,6 +53,15 @@ function canSponsorAct(user: User, project: Project): boolean {
   return false
 }
 
+function canEhsAct(user: User, project: Project): boolean {
+  if (user.role === 'Admin') return true
+  if (user.role === 'EHS' && project.ehsCoordinatorId && user.id === project.ehsCoordinatorId) {
+    return true
+  }
+  if (user.role === 'EHS' && !project.ehsCoordinatorId) return true
+  return false
+}
+
 export function StatusGateActions({ project, currentUser }: StatusGateActionsProps) {
   const assignEhsCoordinator = useProjectsStore((s) => s.assignEhsCoordinator)
   const approveSubmission = useProjectsStore((s) => s.approveSubmission)
@@ -79,7 +87,7 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
   const sponsors = useMemo(() => SEED_USERS.filter((u) => u.role === 'Sponsor'), [])
 
   const canReview = currentUser !== null && REVIEW_ROLES.includes(currentUser.role)
-  const canEhs = currentUser !== null && EHS_ROLES.includes(currentUser.role)
+  const canEhs = currentUser !== null && canEhsAct(currentUser, project)
   const canResubmit =
     currentUser !== null &&
     (canOwnStack(project, currentUser) || canClosureOwner(currentUser, project))
@@ -89,6 +97,7 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
     currentUser !== null &&
     (currentUser.role === 'Admin' ||
       currentUser.role === 'GovernanceLead' ||
+      currentUser.role === 'MaintenanceSustainability' ||
       canClosureOwner(currentUser, project) ||
       canOwnStack(project, currentUser))
 

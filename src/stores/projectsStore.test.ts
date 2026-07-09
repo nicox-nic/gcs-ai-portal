@@ -114,6 +114,36 @@ describe('projectsStore Phase 4 gates', () => {
     expect(updated?.status).toBe('Active')
     expect(updated?.activeSince).toBe(stamped)
   })
+
+  it('ehsApprove is blocked for a non-assigned EHS when coordinator is set', () => {
+    const project = makeQualifiedProject({
+      toolStack: [{ toolId: 'tool-sharepoint', role: 'primary' }],
+      status: 'ForEHSReview',
+      ehsCoordinatorId: 'usr-ehs',
+    })
+    const impostor: User = {
+      ...userByRole('EHS'),
+      id: 'usr-ehs-other',
+      displayName: 'Other EHS',
+    }
+    expect(() => useProjectsStore.getState().ehsApprove(project.id, impostor)).toThrow(
+      /assigned EHS coordinator/i,
+    )
+    expect(() =>
+      useProjectsStore.getState().ehsApprove(project.id, userByRole('EHS')),
+    ).not.toThrow()
+  })
+
+  it('ehsApprove allows Admin even when coordinator is set', () => {
+    const project = makeQualifiedProject({
+      toolStack: [{ toolId: 'tool-sharepoint', role: 'primary' }],
+      status: 'ForEHSReview',
+      ehsCoordinatorId: 'usr-ehs',
+    })
+    expect(() =>
+      useProjectsStore.getState().ehsApprove(project.id, userByRole('Admin')),
+    ).not.toThrow()
+  })
 })
 
 describe('projectsStore Phase 5 closure', () => {
@@ -237,6 +267,29 @@ describe('projectsStore Phase 6 aging', () => {
     expect(updated?.status).toBe('Active')
     expect(updated?.agingMilestone).toBe('none')
     expect(updated?.lastActivityAt).toBe(demoNowIso())
+  })
+
+  it('reactivateProject allows MaintenanceSustainability', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'M&S reactivate',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id ? { ...p, status: 'Idle' as const, agingMilestone: 'idle' as const } : p,
+      ),
+    }))
+    const ms = userByRole('MaintenanceSustainability')
+    expect(() =>
+      useProjectsStore.getState().reactivateProject(created.id, ms),
+    ).not.toThrow()
+    expect(useProjectsStore.getState().projects.find((p) => p.id === created.id)?.status).toBe(
+      'Active',
+    )
   })
 })
 

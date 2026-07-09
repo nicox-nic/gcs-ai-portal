@@ -18,9 +18,8 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { getProfileDefaults } from '@/stores/profileStore'
 import { useProjectsStore } from '@/stores/projectsStore'
-import type { Group, Role, Site } from '@/types'
-
-const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
+import { SUBMIT_ROLES } from '@/lib/roles'
+import type { Group, Site } from '@/types'
 
 export function ManualSubmitPage() {
   const navigate = useNavigate()

@@ -125,6 +125,7 @@ export type DashboardStats = {
   pendingEhsReview: number
   awaitingValidation: number
   highRiskProjects: number
+  needsAttention: number
   idleCount: number
   deactivatedCount: number
   baRequirementsQueue: number
@@ -243,7 +244,8 @@ export function computeDashboardStats(
       ).length
     : 0
 
-  const highRiskProjects = projects.filter(
+  const highRiskProjects = projects.filter((p) => p.tier === 'Tier3').length
+  const needsAttention = projects.filter(
     (p) =>
       p.status === 'Idle' ||
       Object.values(p.stageStatus).some((status) => status === 'Blocked'),
@@ -451,6 +453,7 @@ export function computeDashboardStats(
     pendingEhsReview,
     awaitingValidation,
     highRiskProjects,
+    needsAttention,
     idleCount,
     deactivatedCount,
     baRequirementsQueue,

@@ -52,13 +52,16 @@ describe('computeDashboardStats (V3 Phase 7)', () => {
     expect(row?.numerator).toBe(expected)
   })
 
-  it('counts Active as in-progress and sponsor-validated hours', () => {
-    expect(stats.inProgressCount).toBe(
-      SEED_PROJECTS.filter((p) => p.status === 'Active').length,
+  it('counts Tier3 as highRiskProjects and Idle/Blocked as needsAttention', () => {
+    expect(stats.highRiskProjects).toBe(
+      SEED_PROJECTS.filter((p) => p.tier === 'Tier3').length,
     )
-    const expectedHours = SEED_PROJECTS.filter(
-      (p) => p.sponsorValidated && p.reportedBenefitHours !== null,
-    ).reduce((sum, p) => sum + (p.reportedBenefitHours ?? 0), 0)
-    expect(stats.hoursSaved).toBe(expectedHours)
+    expect(stats.needsAttention).toBe(
+      SEED_PROJECTS.filter(
+        (p) =>
+          p.status === 'Idle' ||
+          Object.values(p.stageStatus).some((status) => status === 'Blocked'),
+      ).length,
+    )
   })
 })

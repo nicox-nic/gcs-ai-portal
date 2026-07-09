@@ -3,10 +3,8 @@ import { ClipboardPen, Sparkles } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { SUBMIT_ROLES } from '@/lib/roles'
 import { useAuthStore } from '@/stores/authStore'
-import type { Role } from '@/types'
-
-const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
 
 export function SubmitProjectPage() {
   const navigate = useNavigate()

@@ -19,9 +19,8 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import { getProfileDefaults } from '@/stores/profileStore'
 import { useProjectsStore } from '@/stores/projectsStore'
-import type { DataAccessStatus, DataSensitivity, Group, Role, Site, SkillLevel } from '@/types'
-
-const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
+import { SUBMIT_ROLES } from '@/lib/roles'
+import type { DataAccessStatus, DataSensitivity, Group, Site, SkillLevel } from '@/types'
 
 type AssistedStep = 'questions' | 'duplicates' | 'preview'
 

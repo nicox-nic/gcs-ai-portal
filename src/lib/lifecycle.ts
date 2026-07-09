@@ -51,7 +51,7 @@ export const LIFECYCLE_STAGES: LifecycleStageMeta[] = [
     label: 'Supplier Oversight',
     order: 3,
     description:
-      'Evaluate vendors and third parties for AI SAQ compliance, NDAs, and security review.',
+      'Govern supplier and third-party AI use — contracts, NDAs, and security review (formal SAQ assessment is tracked outside this portal for now).',
     primaryOwnerRole: 'RiskCompliance',
     supportingRoles: ['AIProgramManager', 'DataEngineering'],
   },

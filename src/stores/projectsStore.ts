@@ -79,7 +79,15 @@ const SUBMISSION_REVIEW_ROLES: User['role'][] = [
   'Admin',
 ]
 const EHS_ASSIGN_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
-const EHS_ACTION_ROLES: User['role'][] = ['EHS', 'Admin']
+/** Mirror canSponsorDecide: assigned coordinator when set; any EHS if unset. */
+function canEhsDecide(actor: User, project: Project): boolean {
+  if (actor.role === 'Admin') return true
+  if (actor.role === 'EHS' && project.ehsCoordinatorId && actor.id === project.ehsCoordinatorId) {
+    return true
+  }
+  if (actor.role === 'EHS' && !project.ehsCoordinatorId) return true
+  return false
+}
 const PROJECT_REVIEW_ROLES: User['role'][] = [
   'AIProgramManager',
   'GovernanceLead',
@@ -930,11 +938,13 @@ export const useProjectsStore = create<ProjectsStore>()(
       ehsApprove: (projectId, actor, note) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
-        assertRole(
-          actor,
-          EHS_ACTION_ROLES,
-          'Only EHS or Admin can approve EHS review.',
-        )
+        if (!canEhsDecide(actor, project)) {
+          throw new Error(
+            project.ehsCoordinatorId
+              ? 'Only the assigned EHS coordinator or Admin can approve EHS review.'
+              : 'Only EHS or Admin can approve EHS review.',
+          )
+        }
         assertStatusTransition(project.status, 'Active')
 
         const timestamp = nowIso()
@@ -973,11 +983,13 @@ export const useProjectsStore = create<ProjectsStore>()(
       ehsReject: (projectId, reason, actor) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
-        assertRole(
-          actor,
-          EHS_ACTION_ROLES,
-          'Only EHS or Admin can reject EHS review.',
-        )
+        if (!canEhsDecide(actor, project)) {
+          throw new Error(
+            project.ehsCoordinatorId
+              ? 'Only the assigned EHS coordinator or Admin can reject EHS review.'
+              : 'Only EHS or Admin can reject EHS review.',
+          )
+        }
         assertStatusTransition(project.status, 'EHSRejected')
         if (!reason.trim()) throw new Error('An EHS rejection reason is required.')
 
@@ -1649,11 +1661,12 @@ export const useProjectsStore = create<ProjectsStore>()(
         const canReactivate =
           actor.role === 'Admin' ||
           actor.role === 'GovernanceLead' ||
+          actor.role === 'MaintenanceSustainability' ||
           canActOnClosureSubmit(actor, project) ||
           canOwnStack(project, actor)
         if (!canReactivate) {
           throw new Error(
-            'Only the submitter, owners, Governance Lead, or Admin can reactivate this project.',
+            'Only the submitter, owners, Maintenance & Sustainability, Governance Lead, or Admin can reactivate this project.',
           )
         }
 

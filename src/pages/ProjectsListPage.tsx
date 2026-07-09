@@ -29,10 +29,10 @@ import { getUserDisplayName } from '@/lib/projectDisplay'
 import { PROJECT_STATUSES } from '@/lib/projectStatus'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { useAuthStore } from '@/stores/authStore'
+import { SUBMIT_ROLES } from '@/lib/roles'
 import { cn, formatRelative, humanizeStage } from '@/lib/utils'
-import type { Group, LifecycleStage, ProjectStatus, Role, Site } from '@/types'
+import type { Group, LifecycleStage, ProjectStatus, Site } from '@/types'
 
-const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
 const GROUPS: Group[] = ['Engineering', 'Field', 'PROGs', 'Marketing']
 const SITES: Site[] = ['Cebu', 'Costa Rica', 'Japan', 'Korea']
 const STATUSES = PROJECT_STATUSES

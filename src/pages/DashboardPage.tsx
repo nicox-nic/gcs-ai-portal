@@ -27,11 +27,9 @@ import {
   type ToolUsageDatum,
 } from '@/lib/dashboardStats'
 import { ROLE_STYLES, getUserInitials } from '@/lib/roleStyles'
+import { SUBMIT_ROLES } from '@/lib/roles'
 import { cn, formatRelative, humanizeRole } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
-import type { Role } from '@/types'
-
-const SUBMIT_ROLES: Role[] = ['Submitter', 'BusinessAnalyst', 'Admin']
 
 function DashboardCard({
   title,
@@ -123,6 +121,7 @@ function RoleCallout() {
   } else if (
     (currentUser.role === 'GovernanceLead' ||
       currentUser.role === 'AIProgramManager' ||
+      currentUser.role === 'MaintenanceSustainability' ||
       currentUser.role === 'Admin') &&
     stats.idleCount > 0
   ) {
@@ -135,7 +134,7 @@ function RoleCallout() {
     }
   } else if (currentUser.role === 'RiskCompliance' && stats.highRiskProjects > 0) {
     content = {
-      text: 'High-risk projects:',
+      text: 'Tier 3 (high-risk) projects:',
       suffix: '',
       count: stats.highRiskProjects,
       className: 'border-red-200 bg-[#FCEBEB] text-red-800',

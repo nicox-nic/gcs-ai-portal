@@ -23,6 +23,7 @@ export function recipientsFor(
     submitter,
     ...usersWithRoles(['DataEngineering', 'AIProgramManager']),
   ])
+  const ms = usersWithRoles(['MaintenanceSustainability'])
   const gov = usersWithRoles(['GovernanceLead'])
 
   switch (kind) {
@@ -51,7 +52,7 @@ export function recipientsFor(
       }
     case 'completed':
     case 'disapproved':
-      return { to: owners, cc: unique([sponsor]) }
+      return { to: unique([...owners, sponsor]), cc: gov }
     case 'project-review-logged':
       return { to: owners, cc: gov }
     case 'aging-reminder':
@@ -59,7 +60,7 @@ export function recipientsFor(
     case 'aging-alert':
     case 'aging-deactivated':
     case 'reactivated':
-      return { to: owners, cc: gov }
+      return { to: unique([...owners, ...ms]), cc: gov }
     case 'requirements-requested':
     case 'uat-requested':
       return {

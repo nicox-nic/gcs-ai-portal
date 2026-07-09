@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
+import { SUBMIT_ROLES } from '@/lib/roles'
 import { useAuthStore } from '@/stores/authStore'
 import type { Role } from '@/types'
 
@@ -33,7 +34,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     to: '/submit',
     label: 'Submit Project',
     icon: PlusCircle,
-    roles: ['Submitter', 'BusinessAnalyst', 'Admin'],
+    roles: [...SUBMIT_ROLES],
   },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/notifications', label: 'Notifications', icon: Bell },
