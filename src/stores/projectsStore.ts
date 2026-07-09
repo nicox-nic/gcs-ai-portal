@@ -14,6 +14,19 @@ import {
 import { notify } from '@/lib/notificationRules'
 import { canQualify } from '@/lib/qualificationLogic'
 import { getAllowedStatusTransitions } from '@/lib/projectStatus'
+import {
+  canAssignBusinessAnalyst,
+  canCompleteDeployment,
+  canCompleteDevelopment,
+  canEditRequirements,
+  canEditUat,
+  deploymentGateBlockReason,
+  developmentGateBlockReason,
+  emptyRequirements,
+  emptyUat,
+  isBaGateMandatory,
+  uatPassed,
+} from '@/lib/baArtifacts'
 import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
@@ -28,12 +41,14 @@ import type {
   QualificationAssessment,
   ReadinessAssessment,
   Recommendation,
+  RequirementsArtifact,
   RewardCategory,
   Site,
   StageStatus,
   StageTransition,
   Submission,
   ToolStackEntry,
+  UatArtifact,
   User,
 } from '@/types'
 
@@ -53,6 +68,7 @@ type QualifyPayload = {
   tier: ProjectTier
   tierRationale: string
   rewardCategory: RewardCategory
+  businessAnalystId?: string | null
 }
 
 const QUALIFY_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
@@ -117,6 +133,19 @@ type ProjectsStore = {
   reviseAfterDisapproval: (projectId: string, actor: User) => void
   updateProject: (projectId: string, patch: Partial<Project>) => void
   reportBenefits: (projectId: string, hours: number) => void
+  assignBusinessAnalyst: (
+    projectId: string,
+    baUserId: string | null,
+    actor: User,
+  ) => void
+  saveRequirements: (
+    projectId: string,
+    artifact: RequirementsArtifact,
+    actor: User,
+  ) => void
+  confirmRequirements: (projectId: string, actor: User) => void
+  saveUat: (projectId: string, artifact: UatArtifact, actor: User) => void
+  signOffUat: (projectId: string, actor: User) => void
   runAging: () => void
   reactivateProject: (projectId: string, actor: User) => void
   resetProjects: () => void
@@ -251,8 +280,11 @@ function emptyV3Fields(timestamp: string) {
     autoTiered: false,
     rewardCategory: null as Project['rewardCategory'],
     ehsCoordinatorId: null as string | null,
+    businessAnalystId: null as string | null,
     qualification: null as Project['qualification'],
     readiness: null as Project['readiness'],
+    requirements: null as Project['requirements'],
+    uat: null as Project['uat'],
     activeSince: null as string | null,
     lastActivityAt: timestamp,
     sponsorDecision: null as Project['sponsorDecision'],
@@ -406,6 +438,35 @@ export const useProjectsStore = create<ProjectsStore>()(
           )
         }
 
+        if (
+          currentStage === 'Development' &&
+          toStage === 'Development' &&
+          toStatus === 'Completed' &&
+          !canCompleteDevelopment(project, actor)
+        ) {
+          throw new Error(
+            developmentGateBlockReason(project) ??
+              'Requirements must be confirmed before Development can complete.',
+          )
+        }
+
+        if (
+          currentStage === 'Deployment' &&
+          toStage === 'Deployment' &&
+          toStatus === 'Completed' &&
+          !canCompleteDeployment(project, actor)
+        ) {
+          throw new Error(
+            deploymentGateBlockReason(project) ??
+              'UAT must Pass and be signed off before Deployment can complete.',
+          )
+        }
+
+        // Box so TS tracks mutation inside the set() callback.
+        const pendingNotify: {
+          current: { project: Project; kind: Parameters<typeof notify>[1] } | null
+        } = { current: null }
+
         set((state) => ({
           projects: state.projects.map((p) => {
             if (p.id !== projectId) return p
@@ -425,7 +486,7 @@ export const useProjectsStore = create<ProjectsStore>()(
             })
             const sideEffects = applyStatusSideEffects(p, toStage, toStatus)
 
-            return {
+            const next: Project = {
               ...p,
               currentStage: toStage,
               stageStatus: { ...p.stageStatus, [toStage]: toStatus },
@@ -433,8 +494,29 @@ export const useProjectsStore = create<ProjectsStore>()(
               auditLog: [...p.auditLog, transition],
               updatedAt: timestamp,
             }
+
+            // Entering Development / Deployment with an assigned BA → request artifacts
+            if (
+              toStage === 'Development' &&
+              fromStage !== 'Development' &&
+              next.businessAnalystId
+            ) {
+              pendingNotify.current = { project: next, kind: 'requirements-requested' }
+            } else if (
+              toStage === 'Deployment' &&
+              fromStage !== 'Deployment' &&
+              next.businessAnalystId
+            ) {
+              pendingNotify.current = { project: next, kind: 'uat-requested' }
+            }
+
+            return next
           }),
         }))
+
+        if (pendingNotify.current) {
+          notify(pendingNotify.current.project, pendingNotify.current.kind, actor)
+        }
       },
 
       qualifyProject: (projectId, payload, actor, note) => {
@@ -486,6 +568,10 @@ export const useProjectsStore = create<ProjectsStore>()(
                   tierRationale: payload.tierRationale,
                   rewardCategory: payload.rewardCategory,
                   autoTiered: false,
+                  businessAnalystId:
+                    payload.businessAnalystId !== undefined
+                      ? payload.businessAnalystId
+                      : p.businessAnalystId,
                   currentStage: 'Policy' as const,
                   stageStatus: {
                     ...p.stageStatus,
@@ -794,6 +880,9 @@ export const useProjectsStore = create<ProjectsStore>()(
             notify(updated, 'ehs-review-requested', actor)
           } else {
             notify(updated, 'approved', actor)
+            if (updated.businessAnalystId) {
+              notify(updated, 'requirements-requested', actor)
+            }
           }
         }
       },
@@ -873,7 +962,12 @@ export const useProjectsStore = create<ProjectsStore>()(
           ),
         }))
         const updated = get().projects.find((p) => p.id === projectId)
-        if (updated) notify(updated, 'ehs-approved', actor)
+        if (updated) {
+          notify(updated, 'ehs-approved', actor)
+          if (updated.businessAnalystId) {
+            notify(updated, 'requirements-requested', actor)
+          }
+        }
       },
 
       ehsReject: (projectId, reason, actor) => {
@@ -1009,6 +1103,11 @@ export const useProjectsStore = create<ProjectsStore>()(
         const hours = payload.reportedBenefitHours
         if (hours === null || hours === undefined || Number.isNaN(hours) || hours <= 0) {
           throw new Error('Report benefit hours before submitting for sponsor approval.')
+        }
+        if (isBaGateMandatory(project) && !uatPassed(project) && actor.role !== 'Admin') {
+          throw new Error(
+            'Tier2/Tier3 projects require passing BA-signed UAT before sponsor approval.',
+          )
         }
 
         const timestamp = nowIso()
@@ -1215,6 +1314,203 @@ export const useProjectsStore = create<ProjectsStore>()(
               : project,
           ),
         }))
+      },
+
+      assignBusinessAnalyst: (projectId, baUserId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canAssignBusinessAnalyst(actor)) {
+          throw new Error(
+            'Only Governance Lead, AI Program Manager, or Admin can assign a Business Analyst.',
+          )
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: baUserId
+            ? `Assigned Business Analyst: ${baUserId}.`
+            : 'Cleared Business Analyst assignment.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  businessAnalystId: baUserId,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      saveRequirements: (projectId, artifact, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditRequirements(project, actor)) {
+          throw new Error('Only the assigned Business Analyst or Admin can edit requirements.')
+        }
+        const timestamp = nowIso()
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  requirements: {
+                    ...artifact,
+                    // Editing clears prior confirm so BA must re-confirm
+                    confirmedBy: null,
+                    confirmedAt: null,
+                  },
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      confirmRequirements: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditRequirements(project, actor)) {
+          throw new Error('Only the assigned Business Analyst or Admin can confirm requirements.')
+        }
+        const base = project.requirements ?? emptyRequirements()
+        if (base.items.length < 1 && actor.role !== 'Admin') {
+          throw new Error('Add at least one requirement before confirming.')
+        }
+        const timestamp = nowIso()
+        const items =
+          base.items.length > 0
+            ? base.items
+            : [
+                {
+                  id: `req-${nanoid(6)}`,
+                  text: 'Self-attested requirements (Tier1 / Admin).',
+                  priority: 'Must' as const,
+                },
+              ]
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'Requirements confirmed by Business Analyst.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  requirements: {
+                    ...base,
+                    items,
+                    confirmedBy: actor.id,
+                    confirmedAt: timestamp,
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'requirements-confirmed', actor)
+      },
+
+      saveUat: (projectId, artifact, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditUat(project, actor)) {
+          throw new Error('Only the assigned Business Analyst or Admin can edit UAT.')
+        }
+        const timestamp = nowIso()
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  uat: {
+                    ...artifact,
+                    signedOffBy: null,
+                    signedOffAt: null,
+                  },
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      signOffUat: (projectId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canEditUat(project, actor)) {
+          throw new Error('Only the assigned Business Analyst or Admin can sign off UAT.')
+        }
+        const base = project.uat ?? emptyUat()
+        if (base.outcome !== 'Pass' && actor.role !== 'Admin') {
+          throw new Error('Set overall UAT outcome to Pass before signing off.')
+        }
+        if (base.cases.length < 1 && actor.role !== 'Admin') {
+          throw new Error('Add at least one UAT case before signing off.')
+        }
+        const timestamp = nowIso()
+        const cases =
+          base.cases.length > 0
+            ? base.cases
+            : [
+                {
+                  id: `uat-${nanoid(6)}`,
+                  description: 'Self-attested acceptance (Tier1 / Admin).',
+                  result: 'Pass' as const,
+                },
+              ]
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: 'UAT signed off by Business Analyst (Pass).',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  uat: {
+                    ...base,
+                    cases,
+                    outcome: 'Pass',
+                    signedOffBy: actor.id,
+                    signedOffAt: timestamp,
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'uat-signed-off', actor)
       },
 
       runAging: () => {

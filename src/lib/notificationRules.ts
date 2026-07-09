@@ -60,6 +60,22 @@ export function recipientsFor(
     case 'aging-deactivated':
     case 'reactivated':
       return { to: owners, cc: gov }
+    case 'requirements-requested':
+    case 'uat-requested':
+      return {
+        to: unique([project.businessAnalystId]),
+        cc: unique([...gov, ...usersWithRoles(['AIProgramManager'])]),
+      }
+    case 'requirements-confirmed':
+      return {
+        to: usersWithRoles(['DataEngineering']),
+        cc: unique([...gov, project.businessAnalystId]),
+      }
+    case 'uat-signed-off':
+      return {
+        to: usersWithRoles(['AIProgramManager', 'DataEngineering']),
+        cc: unique([...gov, project.businessAnalystId]),
+      }
     default:
       return { to: unique([submitter]), cc: gov }
   }
@@ -84,6 +100,10 @@ const SUBJECTS: Record<NotificationKind, (title: string) => string> = {
   'aging-alert': (t) => `[GCS AI] Long-idle alert — ${t}`,
   'aging-deactivated': (t) => `[GCS AI] Project deactivated — ${t}`,
   reactivated: (t) => `[GCS AI] Project reactivated — ${t}`,
+  'requirements-requested': (t) => `[GCS AI] Requirements needed — ${t}`,
+  'requirements-confirmed': (t) => `[GCS AI] Requirements confirmed — ${t}`,
+  'uat-requested': (t) => `[GCS AI] UAT sign-off needed — ${t}`,
+  'uat-signed-off': (t) => `[GCS AI] UAT signed off — ${t}`,
 }
 
 function defaultBody(kind: NotificationKind, project: Project, actor?: User | null): string {

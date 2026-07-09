@@ -20,6 +20,7 @@ import {
   getDisplayedCombos,
   ToolRankingCard,
 } from '@/components/recommendations/RecommendationSections'
+import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
 import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { ROLE_STYLES, getUserInitials } from '@/lib/roleStyles'
+import {
+  canCompleteDeployment,
+  canCompleteDevelopment,
+  deploymentGateBlockReason,
+  developmentGateBlockReason,
+} from '@/lib/baArtifacts'
 import {
   LIFECYCLE_STAGES,
   canActOnStage,
@@ -138,29 +145,47 @@ function TransitionButtons({
   return (
     <div className="flex flex-wrap gap-2">
       {transitions.map((transition) => {
+        const isComplete = transition.toStatus === 'Completed'
+        let baGateBlocked = false
+        let baGateReason: string | null = null
+        if (isComplete && stage === 'Development') {
+          baGateBlocked = !currentUser || !canCompleteDevelopment(project, currentUser)
+          baGateReason = developmentGateBlockReason(project) ??
+            (!currentUser ? 'Sign in to complete this stage.' : null)
+        } else if (isComplete && stage === 'Deployment') {
+          baGateBlocked = !currentUser || !canCompleteDeployment(project, currentUser)
+          baGateReason = deploymentGateBlockReason(project) ??
+            (!currentUser ? 'Sign in to complete this stage.' : null)
+        }
+
+        const enabled = canAct && !baGateBlocked
+        const tooltipText = !canAct
+          ? `Only ${humanizeRole(meta.primaryOwnerRole)} or supporting roles can act on this stage.`
+          : baGateBlocked
+            ? baGateReason ?? 'BA gate not met.'
+            : null
+
         const button = (
           <Button
             key={`${transition.toStage}-${transition.toStatus}`}
             type="button"
             variant="outline"
-            className={cn('h-8 flex-1 text-xs', !canAct && 'cursor-not-allowed opacity-50')}
-            disabled={!canAct}
-            onClick={() => canAct && onRequestTransition(transition)}
+            className={cn('h-8 flex-1 text-xs', !enabled && 'cursor-not-allowed opacity-50')}
+            disabled={!enabled}
+            onClick={() => enabled && onRequestTransition(transition)}
           >
             {transition.label}
           </Button>
         )
 
-        if (canAct) return button
+        if (!tooltipText) return button
 
         return (
           <Tooltip key={`${transition.toStage}-${transition.toStatus}`}>
             <TooltipTrigger asChild>
               <span className="flex-1">{button}</span>
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs text-xs">
-              Only {humanizeRole(meta.primaryOwnerRole)} or supporting roles can act on this stage.
-            </TooltipContent>
+            <TooltipContent className="max-w-xs text-xs">{tooltipText}</TooltipContent>
           </Tooltip>
         )
       })}
@@ -403,6 +428,13 @@ export function ProjectOverviewTab({
             )}
           </div>
 
+          {project.currentStage === 'Development' && (
+            <RequirementsPanel project={project} currentUser={currentUser} />
+          )}
+          {project.currentStage === 'Deployment' && (
+            <UatPanel project={project} currentUser={currentUser} />
+          )}
+
           <TransitionButtons
             project={project}
             currentUser={currentUser}
@@ -557,6 +589,12 @@ export function ProjectLifecycleTab({
                 <RoleBadge key={role} role={role} />
               ))}
             </div>
+            {isCurrent && meta.stage === 'Development' && (
+              <RequirementsPanel project={project} currentUser={currentUser} />
+            )}
+            {isCurrent && meta.stage === 'Deployment' && (
+              <UatPanel project={project} currentUser={currentUser} />
+            )}
             {isCurrent && (
               <TransitionButtons
                 project={project}
@@ -834,6 +872,7 @@ export function ProjectBenefitsTab({
     currentUser !== null &&
     (currentUser.role === 'Admin' ||
       currentUser.id === project.submitterId ||
+      currentUser.id === project.businessAnalystId ||
       currentUser.role === 'DataEngineering' ||
       currentUser.role === 'AIProgramManager')
 

@@ -7,6 +7,7 @@ import {
   Pencil,
   Route,
   User,
+  UserRound,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
@@ -14,16 +15,27 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { TierBadge } from '@/components/common/TierBadge'
 import { LifecycleStepper } from '@/components/project/LifecycleStepper'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { SEED_USERS } from '@/data/seedRoles'
+import { canAssignBusinessAnalyst } from '@/lib/baArtifacts'
 import { stageProgress } from '@/lib/lifecycle'
 import { getUserDisplayName } from '@/lib/projectDisplay'
 import { formatDate, humanizeStage } from '@/lib/utils'
-import type { Project, Tool } from '@/types'
+import type { Project, Tool, User as PortalUser } from '@/types'
 
 type ProjectHeaderCardProps = {
   project: Project
   tools: Tool[]
   onCustomiseStack: () => void
   canCustomiseStack?: boolean
+  currentUser?: PortalUser | null
+  onAssignBusinessAnalyst?: (baUserId: string | null) => void
 }
 
 export function ProjectHeaderCard({
@@ -31,12 +43,20 @@ export function ProjectHeaderCard({
   tools,
   onCustomiseStack,
   canCustomiseStack = false,
+  currentUser = null,
+  onAssignBusinessAnalyst,
 }: ProjectHeaderCardProps) {
   const progress = stageProgress(project)
   const sponsorName = project.sponsorId ? getUserDisplayName(project.sponsorId) : 'Unassigned'
+  const baName = project.businessAnalystId
+    ? getUserDisplayName(project.businessAnalystId)
+    : null
   const showEhsHint =
     (project.status === 'Submitted' || project.status === 'ForEHSReview') &&
     Boolean(project.ehsCoordinatorId)
+  const canAssignBa =
+    Boolean(onAssignBusinessAnalyst) && canAssignBusinessAnalyst(currentUser)
+  const baUsers = SEED_USERS.filter((user) => user.role === 'BusinessAnalyst')
 
   return (
     <>
@@ -62,7 +82,7 @@ export function ProjectHeaderCard({
                 Mirrored to CI Portal
               </Link>
             </div>
-            <div className="flex flex-wrap gap-4 text-[11px] text-stone-500">
+            <div className="flex flex-wrap items-center gap-4 text-[11px] text-stone-500">
               <span className="inline-flex items-center gap-1">
                 <User className="h-3.5 w-3.5" />
                 {getUserDisplayName(project.submitterId)}
@@ -71,6 +91,35 @@ export function ProjectHeaderCard({
                 <Briefcase className="h-3.5 w-3.5" />
                 {sponsorName}
               </span>
+              {(baName || canAssignBa) && (
+                <span className="inline-flex items-center gap-1.5">
+                  <UserRound className="h-3.5 w-3.5" />
+                  {canAssignBa ? (
+                    <Select
+                      value={project.businessAnalystId ?? '__none__'}
+                      onValueChange={(value) =>
+                        onAssignBusinessAnalyst?.(value === '__none__' ? null : value)
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-[160px] border-stone-200 text-[11px]">
+                        <SelectValue placeholder="Assign BA" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__" className="text-xs">
+                          No BA
+                        </SelectItem>
+                        {baUsers.map((user) => (
+                          <SelectItem key={user.id} value={user.id} className="text-xs">
+                            {user.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span>{baName}</span>
+                  )}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1">
                 <Building2 className="h-3.5 w-3.5" />
                 {project.group} · {project.site}

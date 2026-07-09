@@ -3,6 +3,7 @@
  * later without touching callers.
  */
 import { SEED_USERS } from '@/data/seedRoles'
+import { requirementsCiLabel, uatCiLabel } from '@/lib/baArtifacts'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { CiPortalRecord, Project } from '@/types'
 
@@ -26,6 +27,9 @@ function toRecord(project: Project): CiPortalRecord {
     submitterName: displayName(project.submitterId),
     leaderName: displayName(project.submitterId),
     sponsorName: displayName(project.sponsorId),
+    businessAnalystName: displayName(project.businessAnalystId),
+    requirementsStatus: requirementsCiLabel(project),
+    uatStatus: uatCiLabel(project),
     group: project.group,
     site: project.site,
     createdAt: project.createdAt,

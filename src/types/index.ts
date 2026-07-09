@@ -177,11 +177,44 @@ export interface StageTransition {
   note: string
 }
 
+export type RequirementPriority = 'Must' | 'Should' | 'Could'
+
+export interface RequirementItem {
+  id: string
+  text: string
+  priority: RequirementPriority
+}
+
+export interface RequirementsArtifact {
+  items: RequirementItem[]
+  notes: string
+  confirmedBy: string | null
+  confirmedAt: string | null
+}
+
+export type UatResult = 'Pass' | 'Fail' | 'Untested'
+
+export interface UatCase {
+  id: string
+  description: string
+  result: UatResult
+}
+
+export interface UatArtifact {
+  cases: UatCase[]
+  outcome: 'Pass' | 'Fail' | 'Pending'
+  notes: string
+  signedOffBy: string | null
+  signedOffAt: string | null
+}
+
 export interface Project {
   id: string
   title: string
   submitterId: string
   sponsorId: string | null
+  /** Assigned Business Analyst (RACI owner for requirements + UAT). */
+  businessAnalystId: string | null
   group: Group
   site: Site
   department: string
@@ -207,6 +240,10 @@ export interface Project {
   ehsCoordinatorId: string | null
   qualification: QualificationAssessment | null
   readiness: ReadinessAssessment | null
+  /** BA requirements artifact — null until started. */
+  requirements: RequirementsArtifact | null
+  /** BA UAT artifact — null until started. */
+  uat: UatArtifact | null
   activeSince: string | null
   lastActivityAt: string
   sponsorDecision: 'Approved' | 'Disapproved' | null
@@ -236,6 +273,10 @@ export type NotificationKind =
   | 'aging-alert'
   | 'aging-deactivated'
   | 'reactivated'
+  | 'requirements-requested'
+  | 'requirements-confirmed'
+  | 'uat-requested'
+  | 'uat-signed-off'
 
 export interface Notification {
   id: string
@@ -259,6 +300,9 @@ export interface CiPortalRecord {
   submitterName: string
   leaderName: string
   sponsorName: string
+  businessAnalystName: string
+  requirementsStatus: string
+  uatStatus: string
   group: Group
   site: Site
   createdAt: string

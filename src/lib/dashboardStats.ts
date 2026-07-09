@@ -1,6 +1,7 @@
 import type { Group, LifecycleStage, Project, ProjectStatus, ProjectTier, Role, Site, Tool } from '@/types'
 import { SEED_USERS } from '@/data/seedRoles'
 import { GROUP_HEADCOUNT, SITE_HEADCOUNT } from '@/data/seedOrg'
+import { requirementsComplete, uatPassed } from '@/lib/baArtifacts'
 import { PROJECT_STATUSES, STATUS_META } from '@/lib/projectStatus'
 import { TIER_META } from '@/lib/tiering'
 import { ROLE_STYLES } from '@/lib/roleStyles'
@@ -126,6 +127,8 @@ export type DashboardStats = {
   highRiskProjects: number
   idleCount: number
   deactivatedCount: number
+  baRequirementsQueue: number
+  baUatQueue: number
   queues: QueueStat[]
   statusPipeline: StatusPipelineDatum[]
   tierDistribution: TierDistributionDatum[]
@@ -201,7 +204,11 @@ function avatarClassForRole(role: Role | undefined, fallbackGroup: Group): strin
   return GROUP_AVATAR_STYLES[fallbackGroup]
 }
 
-export function computeDashboardStats(projects: Project[], tools: Tool[]): DashboardStats {
+export function computeDashboardStats(
+  projects: Project[],
+  tools: Tool[],
+  options?: { baUserId?: string | null },
+): DashboardStats {
   const totalProjects = projects.length
   const inProgressCount = projects.filter((p) => p.status === 'Active').length
   const completedCount = projects.filter((p) => p.status === 'Completed').length
@@ -215,6 +222,26 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
   const deactivatedCount = projects.filter((p) => p.status === 'Deactivated').length
 
   const awaitingValidation = projects.filter((p) => p.status === 'ForSponsorApproval').length
+
+  const baUserId = options?.baUserId ?? null
+  const baRequirementsQueue = baUserId
+    ? projects.filter(
+        (p) =>
+          p.businessAnalystId === baUserId &&
+          p.status === 'Active' &&
+          p.currentStage === 'Development' &&
+          !requirementsComplete(p),
+      ).length
+    : 0
+  const baUatQueue = baUserId
+    ? projects.filter(
+        (p) =>
+          p.businessAnalystId === baUserId &&
+          p.status === 'Active' &&
+          p.currentStage === 'Deployment' &&
+          !uatPassed(p),
+      ).length
+    : 0
 
   const highRiskProjects = projects.filter(
     (p) =>
@@ -426,6 +453,8 @@ export function computeDashboardStats(projects: Project[], tools: Tool[]): Dashb
     highRiskProjects,
     idleCount,
     deactivatedCount,
+    baRequirementsQueue,
+    baUatQueue,
     queues,
     statusPipeline,
     tierDistribution,

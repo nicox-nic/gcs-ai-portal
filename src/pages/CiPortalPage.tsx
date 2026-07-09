@@ -43,6 +43,9 @@ export function CiPortalPage() {
               <TableHead className="text-xs">Reward</TableHead>
               <TableHead className="text-xs">Submitter</TableHead>
               <TableHead className="text-xs">Sponsor</TableHead>
+              <TableHead className="text-xs">Business Analyst</TableHead>
+              <TableHead className="text-xs">Requirements</TableHead>
+              <TableHead className="text-xs">UAT</TableHead>
               <TableHead className="text-xs">Group / Site</TableHead>
               <TableHead className="text-xs">Benefit hrs</TableHead>
               <TableHead className="text-xs">Last activity</TableHead>
@@ -71,6 +74,13 @@ export function CiPortalPage() {
                 </TableCell>
                 <TableCell className="text-[11px] text-stone-700">{row.submitterName}</TableCell>
                 <TableCell className="text-[11px] text-stone-700">{row.sponsorName}</TableCell>
+                <TableCell className="text-[11px] text-stone-700">
+                  {row.businessAnalystName}
+                </TableCell>
+                <TableCell className="text-[11px] text-stone-700">
+                  {row.requirementsStatus}
+                </TableCell>
+                <TableCell className="text-[11px] text-stone-700">{row.uatStatus}</TableCell>
                 <TableCell className="text-[11px] text-stone-600">
                   {row.group} · {row.site}
                 </TableCell>

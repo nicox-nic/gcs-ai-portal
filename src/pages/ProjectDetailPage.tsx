@@ -65,6 +65,7 @@ export function ProjectDetailPage() {
   const rejectQualification = useProjectsStore((state) => state.rejectQualification)
   const resubmitForAssessment = useProjectsStore((state) => state.resubmitForAssessment)
   const cancelProject = useProjectsStore((state) => state.cancelProject)
+  const assignBusinessAnalyst = useProjectsStore((state) => state.assignBusinessAnalyst)
   const tools = useCatalogStore((state) => state.tools)
   const combos = useCatalogStore((state) => state.combos)
   const trainings = useCatalogStore((state) => state.trainings)
@@ -135,6 +136,20 @@ export function ProjectDetailPage() {
         tools={tools}
         onCustomiseStack={() => setCustomiseOpen(true)}
         canCustomiseStack={stackEditable}
+        currentUser={currentUser}
+        onAssignBusinessAnalyst={(baUserId) => {
+          if (!currentUser) return
+          try {
+            assignBusinessAnalyst(project.id, baUserId, currentUser)
+            toast.success(
+              baUserId ? 'Business Analyst assigned.' : 'Business Analyst cleared.',
+            )
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : 'Could not assign Business Analyst.',
+            )
+          }
+        }}
       />
 
       <div className="overflow-hidden rounded-lg border-[0.5px] border-stone-200 bg-white">

@@ -239,3 +239,101 @@ describe('projectsStore Phase 6 aging', () => {
     expect(updated?.lastActivityAt).toBe(demoNowIso())
   })
 })
+
+describe('projectsStore Phase 8 BA gates', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useCatalogStore.getState().resetCatalog?.()
+    useNotificationsStore.getState().clear()
+    useDemoClockStore.getState().reset()
+  })
+
+  it('advanceStage throws on Development Complete without confirmed requirements for Tier2', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      requirements: {
+        items: [{ id: '1', text: 'Need confirm', priority: 'Must' }],
+        notes: '',
+        confirmedBy: null,
+        confirmedAt: null,
+      },
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', de, 'Done'),
+    ).toThrow(/requirements/i)
+  })
+
+  it('advanceStage allows Admin override on Development Complete without requirements', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      requirements: null,
+    })
+    const admin = userByRole('Admin')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', admin, 'Admin override'),
+    ).not.toThrow()
+  })
+
+  it('submitForSponsorApproval is blocked without passing UAT for Tier3', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier3',
+      currentStage: 'Use',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'Completed',
+        Use: 'InProgress',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      reportedBenefitHours: 10,
+      uat: null,
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore.getState().submitForSponsorApproval(
+        project.id,
+        { reportedBenefitHours: 10 },
+        de,
+      ),
+    ).toThrow(/UAT/i)
+  })
+})

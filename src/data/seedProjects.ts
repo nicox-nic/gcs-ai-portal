@@ -21,8 +21,11 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     autoTiered: false,
     rewardCategory: null,
     ehsCoordinatorId: null,
+    businessAnalystId: null,
     qualification: null,
     readiness: null,
+    requirements: null,
+    uat: null,
     activeSince: opts?.activeSince ?? null,
     lastActivityAt: updatedAt,
     sponsorDecision: null,
@@ -34,6 +37,25 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
 
 function filledBools(length: number, trueCount: number): boolean[] {
   return Array.from({ length }, (_, i) => i < trueCount)
+}
+
+function confirmedRequirements(at: string, text: string) {
+  return {
+    items: [{ id: `req-${text.slice(0, 8)}`, text, priority: 'Must' as const }],
+    notes: '',
+    confirmedBy: 'usr-ba',
+    confirmedAt: at,
+  }
+}
+
+function passedUat(at: string, description: string) {
+  return {
+    cases: [{ id: `uat-${description.slice(0, 8)}`, description, result: 'Pass' as const }],
+    outcome: 'Pass' as const,
+    notes: '',
+    signedOffBy: 'usr-ba',
+    signedOffAt: at,
+  }
 }
 
 function assessmentBundle(opts: {
@@ -278,6 +300,29 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal ops impact with limited personal data in ticket content.',
       primaryTrue: 3,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: confirmedRequirements(
+      daysAgo(20),
+      'Triage agent must cite KB article IDs on every suggested resolution.',
+    ),
+    uat: {
+      cases: [
+        {
+          id: 'uat-042-1',
+          description: 'Pilot users accept routing suggestion within 2 clicks.',
+          result: 'Fail',
+        },
+        {
+          id: 'uat-042-2',
+          description: 'No PII leaves the tenant in suggested replies.',
+          result: 'Pass',
+        },
+      ],
+      outcome: 'Fail',
+      notes: 'Routing UX failed acceptance — DE remediating before re-test.',
+      signedOffBy: null,
+      signedOffAt: null,
+    },
     sponsorValidated: false,
   },
   {
@@ -413,6 +458,25 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Predictive model on equipment data with operational safety implications.',
       primaryTrue: 4,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: {
+      items: [
+        {
+          id: 'req-031-1',
+          text: 'Model must expose prediction interval alongside point estimate.',
+          priority: 'Must',
+        },
+        {
+          id: 'req-031-2',
+          text: 'Predictions must not auto-dispatch work orders without human confirm.',
+          priority: 'Must',
+        },
+      ],
+      notes: 'Draft with DE — awaiting BA confirm before Development can complete.',
+      confirmedBy: null,
+      confirmedAt: null,
+    },
+    uat: null,
     sponsorValidated: false,
   },
   {
@@ -733,6 +797,12 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal UAT reporting automation; decision-support only.',
       primaryTrue: 2,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: confirmedRequirements(
+      daysAgo(40),
+      'UAT report exports must match the approved template columns.',
+    ),
+    uat: passedUat(daysAgo(30), 'Ops lead accepts automated UAT report for one cycle.'),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
   },
@@ -857,6 +927,12 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal marketing dashboard; self-build with light DE support.',
       primaryTrue: 2,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: confirmedRequirements(
+      daysAgo(14),
+      'Dashboard refreshes overnight from approved Marketing data mart.',
+    ),
+    uat: passedUat(daysAgo(8), 'Marketing lead accepts published dashboard layout.'),
     sponsorValidated: false,
   },
   {
@@ -998,6 +1074,12 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal spare-parts forecast; no customer-facing decisions.',
       primaryTrue: 2,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: confirmedRequirements(
+      daysAgo(90),
+      'Forecast must not auto-reorder parts without planner confirmation.',
+    ),
+    uat: passedUat(daysAgo(70), 'Planners accept forecast accuracy on Costa Rica pilot.'),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
   },
@@ -1077,6 +1159,7 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal meeting summarisation with no customer data.',
       primaryTrue: 2,
     }),
+    businessAnalystId: 'usr-ba',
     sponsorValidated: false,
   },
   {
@@ -1428,6 +1511,12 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal roster assist; self-build Tier1.',
       primaryTrue: 2,
     }),
+    businessAnalystId: 'usr-ba',
+    requirements: confirmedRequirements(
+      daysAgo(25),
+      'Roster suggestions must be editable before publish.',
+    ),
+    uat: passedUat(daysAgo(10), 'Shift leads accept roster assist for one week.'),
     sponsorValidated: false,
   },
   {

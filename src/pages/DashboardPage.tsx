@@ -101,6 +101,26 @@ function RoleCallout() {
       icon: ShieldCheck,
     }
   } else if (
+    currentUser.role === 'BusinessAnalyst' &&
+    (stats.baRequirementsQueue > 0 || stats.baUatQueue > 0)
+  ) {
+    const parts: string[] = []
+    if (stats.baRequirementsQueue > 0) {
+      parts.push(
+        `${stats.baRequirementsQueue} need${stats.baRequirementsQueue === 1 ? 's' : ''} requirements`,
+      )
+    }
+    if (stats.baUatQueue > 0) {
+      parts.push(`${stats.baUatQueue} need${stats.baUatQueue === 1 ? 's' : ''} UAT sign-off`)
+    }
+    content = {
+      text: 'Your BA queue:',
+      suffix: ` — ${parts.join('; ')}`,
+      count: stats.baRequirementsQueue + stats.baUatQueue,
+      className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
+      icon: ShieldCheck,
+    }
+  } else if (
     (currentUser.role === 'GovernanceLead' ||
       currentUser.role === 'AIProgramManager' ||
       currentUser.role === 'Admin') &&
@@ -136,7 +156,9 @@ function RoleCallout() {
           ? '/projects?status=Idle'
           : content.text.startsWith('Awaiting your validation')
             ? '/projects?status=ForSponsorApproval'
-            : '/projects'
+            : content.text.startsWith('Your BA queue')
+              ? '/projects?status=Active'
+              : '/projects'
 
   return (
     <div

@@ -35,6 +35,7 @@ import {
 import { RISK_BY_TIER, TIER_BY_RISK } from '@/lib/projectStatus'
 import { formatDateTime, humanizeRole, cn } from '@/lib/utils'
 import { getUserDisplayName } from '@/lib/projectDisplay'
+import { SEED_USERS } from '@/data/seedRoles'
 import type {
   Project,
   ProjectTier,
@@ -75,6 +76,7 @@ type ProjectQualificationTabProps = {
     tier: ProjectTier
     tierRationale: string
     rewardCategory: RewardCategory
+    businessAnalystId?: string | null
   }) => void
   onReject: (reason: string) => void
   onCancel: (reason: string) => void
@@ -288,7 +290,9 @@ export function ProjectQualificationTab({
   )
   const [reason, setReason] = useState('')
   const [pendingDecision, setPendingDecision] = useState<DecisionKind>(null)
+  const [baPick, setBaPick] = useState(project.businessAnalystId ?? '__none__')
 
+  const baUsers = SEED_USERS.filter((user) => user.role === 'BusinessAnalyst')
   const scores = scoreReadiness(readiness)
   const isAi = qualifiesAsAI(qualification)
   const qualifyEnabled = canQualify(readiness, qualification, tier, rewardCategory)
@@ -303,7 +307,8 @@ export function ProjectQualificationTab({
         <div className="rounded-md border-[0.5px] border-indigo-200 bg-indigo-50 px-3.5 py-3 text-xs text-indigo-900">
           Awaiting Governance qualification. Only{' '}
           {humanizeRole('GovernanceLead')}, {humanizeRole('RiskCompliance')}, or Admin can complete
-          the readiness and qualification checklists.
+          the readiness and qualification checklists. You can review the Submission on the Overview
+          tab.
         </div>
       </div>
     )
@@ -535,6 +540,29 @@ export function ProjectQualificationTab({
             </SelectContent>
           </Select>
         </div>
+        <div className="mt-3">
+          <Label className="mb-1.5 text-[11px] text-stone-700">Business Analyst</Label>
+          <Select value={baPick} onValueChange={setBaPick}>
+            <SelectTrigger className="h-9 w-full text-xs">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs">
+                None
+              </SelectItem>
+              {baUsers.map((user) => (
+                <SelectItem key={user.id} value={user.id} className="text-xs">
+                  {user.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {baPick === '__none__' && (
+            <p className="mt-1.5 text-[11px] text-amber-800">
+              No BA assigned — requirements/UAT gates will need assignment later.
+            </p>
+          )}
+        </div>
       </section>
 
       <div className="flex flex-wrap items-end gap-2 border-t-[0.5px] border-stone-200 pt-4">
@@ -597,6 +625,7 @@ export function ProjectQualificationTab({
               tier,
               tierRationale,
               rewardCategory,
+              businessAnalystId: baPick === '__none__' ? null : baPick,
             })
             toast.success('Project qualified.')
           } catch (error) {
