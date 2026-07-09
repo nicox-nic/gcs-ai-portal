@@ -77,6 +77,8 @@ type ProjectQualificationTabProps = {
     tierRationale: string
     rewardCategory: RewardCategory
     businessAnalystId?: string | null
+    dataEngineerId?: string | null
+    programManagerId?: string | null
   }) => void
   onReject: (reason: string) => void
   onCancel: (reason: string) => void
@@ -291,8 +293,12 @@ export function ProjectQualificationTab({
   const [reason, setReason] = useState('')
   const [pendingDecision, setPendingDecision] = useState<DecisionKind>(null)
   const [baPick, setBaPick] = useState(project.businessAnalystId ?? '__none__')
+  const [dePick, setDePick] = useState(project.dataEngineerId ?? '__none__')
+  const [pmPick, setPmPick] = useState(project.programManagerId ?? '__none__')
 
   const baUsers = SEED_USERS.filter((user) => user.role === 'BusinessAnalyst')
+  const deUsers = SEED_USERS.filter((user) => user.role === 'DataEngineering')
+  const pmUsers = SEED_USERS.filter((user) => user.role === 'AIProgramManager')
   const scores = scoreReadiness(readiness)
   const isAi = qualifiesAsAI(qualification)
   const qualifyEnabled = canQualify(readiness, qualification, tier, rewardCategory)
@@ -540,28 +546,66 @@ export function ProjectQualificationTab({
             </SelectContent>
           </Select>
         </div>
-        <div className="mt-3">
-          <Label className="mb-1.5 text-[11px] text-stone-700">Business Analyst</Label>
-          <Select value={baPick} onValueChange={setBaPick}>
-            <SelectTrigger className="h-9 w-full text-xs">
-              <SelectValue placeholder="None" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__" className="text-xs">
-                None
-              </SelectItem>
-              {baUsers.map((user) => (
-                <SelectItem key={user.id} value={user.id} className="text-xs">
-                  {user.displayName}
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label className="mb-1.5 text-[11px] text-stone-700">Business Analyst</Label>
+            <Select value={baPick} onValueChange={setBaPick}>
+              <SelectTrigger className="h-9 w-full text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs">
+                  None
                 </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {baPick === '__none__' && (
-            <p className="mt-1.5 text-[11px] text-amber-800">
-              No BA assigned — requirements/UAT gates will need assignment later.
-            </p>
-          )}
+                {baUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id} className="text-xs">
+                    {user.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {baPick === '__none__' && (
+              <p className="mt-1.5 text-[11px] text-amber-800">
+                No BA — requirements/UAT need assignment later.
+              </p>
+            )}
+          </div>
+          <div>
+            <Label className="mb-1.5 text-[11px] text-stone-700">Data Engineer</Label>
+            <Select value={dePick} onValueChange={setDePick}>
+              <SelectTrigger className="h-9 w-full text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs">
+                  None
+                </SelectItem>
+                {deUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id} className="text-xs">
+                    {user.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 text-[11px] text-stone-700">Program Manager</Label>
+            <Select value={pmPick} onValueChange={setPmPick}>
+              <SelectTrigger className="h-9 w-full text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__" className="text-xs">
+                  None
+                </SelectItem>
+                {pmUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id} className="text-xs">
+                    {user.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </section>
 
@@ -626,6 +670,8 @@ export function ProjectQualificationTab({
               tierRationale,
               rewardCategory,
               businessAnalystId: baPick === '__none__' ? null : baPick,
+              dataEngineerId: dePick === '__none__' ? null : dePick,
+              programManagerId: pmPick === '__none__' ? null : pmPick,
             })
             toast.success('Project qualified.')
           } catch (error) {

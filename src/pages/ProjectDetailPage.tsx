@@ -66,6 +66,9 @@ export function ProjectDetailPage() {
   const resubmitForAssessment = useProjectsStore((state) => state.resubmitForAssessment)
   const cancelProject = useProjectsStore((state) => state.cancelProject)
   const assignBusinessAnalyst = useProjectsStore((state) => state.assignBusinessAnalyst)
+  const assignDataEngineer = useProjectsStore((state) => state.assignDataEngineer)
+  const assignProgramManager = useProjectsStore((state) => state.assignProgramManager)
+  const assignMaintenanceOwner = useProjectsStore((state) => state.assignMaintenanceOwner)
   const tools = useCatalogStore((state) => state.tools)
   const combos = useCatalogStore((state) => state.combos)
   const trainings = useCatalogStore((state) => state.trainings)
@@ -147,6 +150,41 @@ export function ProjectDetailPage() {
           } catch (error) {
             toast.error(
               error instanceof Error ? error.message : 'Could not assign Business Analyst.',
+            )
+          }
+        }}
+        onAssignDataEngineer={(userId) => {
+          if (!currentUser) return
+          try {
+            assignDataEngineer(project.id, userId, currentUser)
+            toast.success(userId ? 'Data Engineer assigned.' : 'Data Engineer cleared.')
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : 'Could not assign Data Engineer.',
+            )
+          }
+        }}
+        onAssignProgramManager={(userId) => {
+          if (!currentUser) return
+          try {
+            assignProgramManager(project.id, userId, currentUser)
+            toast.success(userId ? 'Program Manager assigned.' : 'Program Manager cleared.')
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : 'Could not assign Program Manager.',
+            )
+          }
+        }}
+        onAssignMaintenanceOwner={(userId) => {
+          if (!currentUser) return
+          try {
+            assignMaintenanceOwner(project.id, userId, currentUser)
+            toast.success(
+              userId ? 'Maintenance Owner assigned.' : 'Maintenance Owner cleared.',
+            )
+          } catch (error) {
+            toast.error(
+              error instanceof Error ? error.message : 'Could not assign Maintenance Owner.',
             )
           }
         }}

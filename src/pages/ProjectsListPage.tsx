@@ -31,11 +31,12 @@ import { useCatalogStore } from '@/stores/catalogStore'
 import { useAuthStore } from '@/stores/authStore'
 import { SUBMIT_ROLES } from '@/lib/roles'
 import { cn, formatRelative, humanizeStage } from '@/lib/utils'
-import type { Group, LifecycleStage, ProjectStatus, Site } from '@/types'
+import type { Group, LifecycleStage, ProjectStatus, ProjectTier, Site } from '@/types'
 
 const GROUPS: Group[] = ['Engineering', 'Field', 'PROGs', 'Marketing']
 const SITES: Site[] = ['Cebu', 'Costa Rica', 'Japan', 'Korea']
 const STATUSES = PROJECT_STATUSES
+const TIERS: ProjectTier[] = ['Tier1', 'Tier2', 'Tier3']
 
 export function ProjectsListPage() {
   const currentUser = useAuthStore((state) => state.currentUser)
@@ -143,6 +144,26 @@ export function ProjectsListPage() {
             {SITES.map((site) => (
               <SelectItem key={site} value={site} className="text-xs">
                 {site}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.tier}
+          onValueChange={(value) =>
+            setFilters({ ...filters, tier: value as ProjectTier | 'all' })
+          }
+        >
+          <SelectTrigger className="h-9 w-full text-xs lg:w-[120px]">
+            <SelectValue placeholder="Tier" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">
+              All tiers
+            </SelectItem>
+            {TIERS.map((tier) => (
+              <SelectItem key={tier} value={tier} className="text-xs">
+                {tier}
               </SelectItem>
             ))}
           </SelectContent>

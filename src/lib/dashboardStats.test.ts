@@ -64,4 +64,40 @@ describe('computeDashboardStats (V3 Phase 7)', () => {
       ).length,
     )
   })
+
+  it('scopes DE/PM/M&S queues to the assigned user', () => {
+    const scoped = computeDashboardStats(SEED_PROJECTS, SEED_TOOLS, {
+      currentUserId: 'usr-data',
+    })
+    expect(scoped.deDevelopmentQueue).toBe(
+      SEED_PROJECTS.filter(
+        (p) =>
+          p.dataEngineerId === 'usr-data' &&
+          p.status === 'Active' &&
+          p.currentStage === 'Development',
+      ).length,
+    )
+    const pmScoped = computeDashboardStats(SEED_PROJECTS, SEED_TOOLS, {
+      currentUserId: 'usr-pm',
+    })
+    expect(pmScoped.pmReviewQueue).toBe(
+      SEED_PROJECTS.filter((p) => p.status === 'Submitted').length,
+    )
+    expect(pmScoped.pmDeploymentQueue).toBe(
+      SEED_PROJECTS.filter(
+        (p) =>
+          p.programManagerId === 'usr-pm' &&
+          p.status === 'Active' &&
+          p.currentStage === 'Deployment',
+      ).length,
+    )
+    const msScoped = computeDashboardStats(SEED_PROJECTS, SEED_TOOLS, {
+      currentUserId: 'usr-maint',
+    })
+    expect(msScoped.msActiveQueue).toBe(
+      SEED_PROJECTS.filter(
+        (p) => p.maintenanceOwnerId === 'usr-maint' && p.status === 'Active',
+      ).length,
+    )
+  })
 })

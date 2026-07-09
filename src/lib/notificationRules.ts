@@ -10,6 +10,12 @@ function unique(ids: (string | null | undefined)[]): string[] {
   return [...new Set(ids.filter((id): id is string => Boolean(id)))]
 }
 
+/** Prefer assigned lead; fall back to all users with that role. */
+function assignedOrRole(assignedId: string | null | undefined, role: Role): string[] {
+  if (assignedId) return [assignedId]
+  return usersWithRoles([role])
+}
+
 export function recipientsFor(
   kind: NotificationKind,
   project: Project,
@@ -18,13 +24,19 @@ export function recipientsFor(
   const sponsor = project.sponsorId
   const ehs = project.ehsCoordinatorId
   const govRisk = usersWithRoles(['GovernanceLead', 'RiskCompliance'])
-  const pmGov = usersWithRoles(['AIProgramManager', 'GovernanceLead'])
+  const pmGov = unique([
+    ...assignedOrRole(project.programManagerId, 'AIProgramManager'),
+    ...usersWithRoles(['GovernanceLead']),
+  ])
   const owners = unique([
     submitter,
-    ...usersWithRoles(['DataEngineering', 'AIProgramManager']),
+    ...assignedOrRole(project.dataEngineerId, 'DataEngineering'),
+    ...assignedOrRole(project.programManagerId, 'AIProgramManager'),
   ])
-  const ms = usersWithRoles(['MaintenanceSustainability'])
+  const ms = assignedOrRole(project.maintenanceOwnerId, 'MaintenanceSustainability')
   const gov = usersWithRoles(['GovernanceLead'])
+  const de = assignedOrRole(project.dataEngineerId, 'DataEngineering')
+  const pm = assignedOrRole(project.programManagerId, 'AIProgramManager')
 
   switch (kind) {
     case 'submitted-for-assessment':
@@ -65,18 +77,24 @@ export function recipientsFor(
     case 'uat-requested':
       return {
         to: unique([project.businessAnalystId]),
-        cc: unique([...gov, ...usersWithRoles(['AIProgramManager'])]),
+        cc: unique([...gov, ...pm]),
       }
     case 'requirements-confirmed':
       return {
-        to: usersWithRoles(['DataEngineering']),
+        to: de,
         cc: unique([...gov, project.businessAnalystId]),
       }
     case 'uat-signed-off':
       return {
-        to: usersWithRoles(['AIProgramManager', 'DataEngineering']),
+        to: unique([...pm, ...de]),
         cc: unique([...gov, project.businessAnalystId]),
       }
+    case 'development-started':
+      return { to: de, cc: unique([...gov, ...pm, project.businessAnalystId]) }
+    case 'deployment-started':
+      return { to: pm, cc: unique([...gov, ...de, project.businessAnalystId]) }
+    case 'go-live':
+      return { to: ms, cc: unique([...gov, ...owners]) }
     default:
       return { to: unique([submitter]), cc: gov }
   }
@@ -105,6 +123,9 @@ const SUBJECTS: Record<NotificationKind, (title: string) => string> = {
   'requirements-confirmed': (t) => `[GCS AI] Requirements confirmed — ${t}`,
   'uat-requested': (t) => `[GCS AI] UAT sign-off needed — ${t}`,
   'uat-signed-off': (t) => `[GCS AI] UAT signed off — ${t}`,
+  'development-started': (t) => `[GCS AI] Development started — ${t}`,
+  'deployment-started': (t) => `[GCS AI] Deployment started — ${t}`,
+  'go-live': (t) => `[GCS AI] Project went live — ${t}`,
 }
 
 function defaultBody(kind: NotificationKind, project: Project, actor?: User | null): string {

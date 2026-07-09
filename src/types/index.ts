@@ -215,6 +215,12 @@ export interface Project {
   sponsorId: string | null
   /** Assigned Business Analyst (RACI owner for requirements + UAT). */
   businessAnalystId: string | null
+  /** Lead builder — Development owner-of-record. */
+  dataEngineerId: string | null
+  /** Deployment / program lead. */
+  programManagerId: string | null
+  /** Operational owner for the live project (Use). */
+  maintenanceOwnerId: string | null
   group: Group
   site: Site
   department: string
@@ -277,6 +283,9 @@ export type NotificationKind =
   | 'requirements-confirmed'
   | 'uat-requested'
   | 'uat-signed-off'
+  | 'development-started'
+  | 'deployment-started'
+  | 'go-live'
 
 export interface Notification {
   id: string
@@ -301,6 +310,9 @@ export interface CiPortalRecord {
   leaderName: string
   sponsorName: string
   businessAnalystName: string
+  dataEngineerName: string
+  programManagerName: string
+  maintenanceOwnerName: string
   requirementsStatus: string
   uatStatus: string
   group: Group

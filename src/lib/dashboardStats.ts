@@ -130,6 +130,11 @@ export type DashboardStats = {
   deactivatedCount: number
   baRequirementsQueue: number
   baUatQueue: number
+  deDevelopmentQueue: number
+  pmReviewQueue: number
+  pmDeploymentQueue: number
+  msActiveQueue: number
+  msIdleAssignedQueue: number
   queues: QueueStat[]
   statusPipeline: StatusPipelineDatum[]
   tierDistribution: TierDistributionDatum[]
@@ -208,7 +213,7 @@ function avatarClassForRole(role: Role | undefined, fallbackGroup: Group): strin
 export function computeDashboardStats(
   projects: Project[],
   tools: Tool[],
-  options?: { baUserId?: string | null },
+  options?: { currentUserId?: string | null },
 ): DashboardStats {
   const totalProjects = projects.length
   const inProgressCount = projects.filter((p) => p.status === 'Active').length
@@ -224,23 +229,51 @@ export function computeDashboardStats(
 
   const awaitingValidation = projects.filter((p) => p.status === 'ForSponsorApproval').length
 
-  const baUserId = options?.baUserId ?? null
-  const baRequirementsQueue = baUserId
+  const uid = options?.currentUserId ?? null
+  const baRequirementsQueue = uid
     ? projects.filter(
         (p) =>
-          p.businessAnalystId === baUserId &&
+          p.businessAnalystId === uid &&
           p.status === 'Active' &&
           p.currentStage === 'Development' &&
           !requirementsComplete(p),
       ).length
     : 0
-  const baUatQueue = baUserId
+  const baUatQueue = uid
     ? projects.filter(
         (p) =>
-          p.businessAnalystId === baUserId &&
+          p.businessAnalystId === uid &&
           p.status === 'Active' &&
           p.currentStage === 'Deployment' &&
           !uatPassed(p),
+      ).length
+    : 0
+  const deDevelopmentQueue = uid
+    ? projects.filter(
+        (p) =>
+          p.dataEngineerId === uid &&
+          p.status === 'Active' &&
+          p.currentStage === 'Development',
+      ).length
+    : 0
+  const pmReviewQueue = projects.filter((p) => p.status === 'Submitted').length
+  const pmDeploymentQueue = uid
+    ? projects.filter(
+        (p) =>
+          p.programManagerId === uid &&
+          p.status === 'Active' &&
+          p.currentStage === 'Deployment',
+      ).length
+    : 0
+  const msActiveQueue = uid
+    ? projects.filter((p) => p.maintenanceOwnerId === uid && p.status === 'Active').length
+    : 0
+  const msIdleAssignedQueue = uid
+    ? projects.filter(
+        (p) =>
+          p.maintenanceOwnerId === uid &&
+          (p.status === 'Idle' ||
+            Object.values(p.stageStatus).some((status) => status === 'Blocked')),
       ).length
     : 0
 
@@ -458,6 +491,11 @@ export function computeDashboardStats(
     deactivatedCount,
     baRequirementsQueue,
     baUatQueue,
+    deDevelopmentQueue,
+    pmReviewQueue,
+    pmDeploymentQueue,
+    msActiveQueue,
+    msIdleAssignedQueue,
     queues,
     statusPipeline,
     tierDistribution,

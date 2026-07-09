@@ -146,6 +146,41 @@ describe('projectsStore Phase 4 gates', () => {
   })
 })
 
+describe('projectsStore Phase 10 delivery slots', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useCatalogStore.getState().resetCatalog?.()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('assignDataEngineer sets field and audit; DE may self-claim', () => {
+    const project = makeQualifiedProject()
+    const de = userByRole('DataEngineering')
+    useProjectsStore.getState().assignDataEngineer(project.id, de.id, de)
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.dataEngineerId).toBe(de.id)
+    expect(updated?.auditLog.some((e) => e.note.includes('Assigned Data Engineer'))).toBe(true)
+  })
+
+  it('assignDataEngineer denies DE assigning someone else', () => {
+    const project = makeQualifiedProject()
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore.getState().assignDataEngineer(project.id, 'usr-other', de),
+    ).toThrow(/claiming themselves|Data Engineer/i)
+  })
+
+  it('assignProgramManager and assignMaintenanceOwner work for governance', () => {
+    const project = makeQualifiedProject()
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().assignProgramManager(project.id, 'usr-pm', gov)
+    useProjectsStore.getState().assignMaintenanceOwner(project.id, 'usr-maint', gov)
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.programManagerId).toBe('usr-pm')
+    expect(updated?.maintenanceOwnerId).toBe('usr-maint')
+  })
+})
+
 describe('projectsStore Phase 5 closure', () => {
   beforeEach(() => {
     useProjectsStore.getState().resetProjects()

@@ -233,6 +233,9 @@ export function ProjectOverviewTab({
       currentUser.role === 'GovernanceLead' ||
       currentUser.role === 'Admin')
 
+  const showMsHint =
+    project.status === 'Active' && project.maintenanceOwnerId === null
+
   const reviewEntries = project.auditLog
     .filter((entry) => isProjectReviewEntry(entry.note))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -240,6 +243,12 @@ export function ProjectOverviewTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px]">
       <div className="border-b-[0.5px] border-stone-200 p-4 lg:border-r lg:border-b-0">
+        {showMsHint && (
+          <div className="mb-3.5 rounded-md border-[0.5px] border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+            No Maintenance Owner assigned — assign one in the header so the Use-phase owner is
+            notified on go-live and aging. Governance / PM can assign, or M&S can claim themselves.
+          </div>
+        )}
         <CollapsibleSection title="Basics">
           <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
             <div>

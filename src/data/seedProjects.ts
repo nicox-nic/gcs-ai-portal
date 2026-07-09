@@ -22,6 +22,9 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     rewardCategory: null,
     ehsCoordinatorId: null,
     businessAnalystId: null,
+    dataEngineerId: null,
+    programManagerId: null,
+    maintenanceOwnerId: null,
     qualification: null,
     readiness: null,
     requirements: null,
@@ -301,6 +304,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 3,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: null,
     requirements: confirmedRequirements(
       daysAgo(20),
       'Triage agent must cite KB article IDs on every suggested resolution.',
@@ -459,6 +465,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 4,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: null,
     requirements: {
       items: [
         {
@@ -798,6 +807,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
     requirements: confirmedRequirements(
       daysAgo(40),
       'UAT report exports must match the approved template columns.',
@@ -928,6 +940,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
     requirements: confirmedRequirements(
       daysAgo(14),
       'Dashboard refreshes overnight from approved Marketing data mart.',
@@ -1075,6 +1090,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
     requirements: confirmedRequirements(
       daysAgo(90),
       'Forecast must not auto-reorder parts without planner confirmation.',
@@ -1160,6 +1178,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: null,
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: null,
     sponsorValidated: false,
   },
   {
@@ -1512,6 +1533,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     businessAnalystId: 'usr-ba',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
     requirements: confirmedRequirements(
       daysAgo(25),
       'Roster suggestions must be editable before publish.',
@@ -1689,6 +1713,9 @@ export const SEED_PROJECTS: Project[] = [
       primaryTrue: 2,
     }),
     agingMilestone: 'idle',
+    dataEngineerId: 'usr-data',
+    programManagerId: 'usr-pm',
+    maintenanceOwnerId: 'usr-maint',
     sponsorValidated: false,
   },
   {

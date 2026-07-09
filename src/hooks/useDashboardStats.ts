@@ -10,7 +10,7 @@ export function useDashboardStats() {
   const currentUserId = useAuthStore((state) => state.currentUser?.id ?? null)
 
   return useMemo(
-    () => computeDashboardStats(projects, tools, { baUserId: currentUserId }),
+    () => computeDashboardStats(projects, tools, { currentUserId: currentUserId }),
     [projects, tools, currentUserId],
   )
 }

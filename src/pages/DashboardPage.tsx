@@ -118,6 +118,52 @@ function RoleCallout() {
       className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
       icon: ShieldCheck,
     }
+  } else if (currentUser.role === 'DataEngineering' && stats.deDevelopmentQueue > 0) {
+    content = {
+      text: 'Your DE build queue:',
+      suffix: ' in Development',
+      count: stats.deDevelopmentQueue,
+      className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
+      icon: ShieldCheck,
+    }
+  } else if (
+    currentUser.role === 'AIProgramManager' &&
+    (stats.pmReviewQueue > 0 || stats.pmDeploymentQueue > 0)
+  ) {
+    const parts: string[] = []
+    if (stats.pmReviewQueue > 0) {
+      parts.push(
+        `${stats.pmReviewQueue} Submitted awaiting review`,
+      )
+    }
+    if (stats.pmDeploymentQueue > 0) {
+      parts.push(`${stats.pmDeploymentQueue} in Deployment`)
+    }
+    content = {
+      text: 'Your PM queue:',
+      suffix: ` — ${parts.join('; ')}`,
+      count: stats.pmReviewQueue + stats.pmDeploymentQueue,
+      className: 'border-indigo-200 bg-[#EEEDFE] text-indigo-900',
+      icon: ShieldCheck,
+    }
+  } else if (
+    currentUser.role === 'MaintenanceSustainability' &&
+    (stats.msActiveQueue > 0 || stats.msIdleAssignedQueue > 0)
+  ) {
+    const parts: string[] = []
+    if (stats.msActiveQueue > 0) {
+      parts.push(`${stats.msActiveQueue} Active`)
+    }
+    if (stats.msIdleAssignedQueue > 0) {
+      parts.push(`${stats.msIdleAssignedQueue} Idle/attention`)
+    }
+    content = {
+      text: 'Your M&S queue:',
+      suffix: ` — ${parts.join('; ')}`,
+      count: stats.msActiveQueue + stats.msIdleAssignedQueue,
+      className: 'border-green-200 bg-[#EAF3DE] text-green-900',
+      icon: ShieldCheck,
+    }
   } else if (
     (currentUser.role === 'GovernanceLead' ||
       currentUser.role === 'AIProgramManager' ||
@@ -156,8 +202,18 @@ function RoleCallout() {
           : content.text.startsWith('Awaiting your validation')
             ? '/projects?status=ForSponsorApproval'
             : content.text.startsWith('Your BA queue')
-              ? '/projects?status=Active'
-              : '/projects'
+              ? '/projects?status=Active&assigned=ba'
+              : content.text.startsWith('Your DE build')
+                ? '/projects?stage=Development&assigned=de'
+                : content.text.startsWith('Your PM queue')
+                  ? stats.pmReviewQueue > 0
+                    ? '/projects?status=Submitted'
+                    : '/projects?stage=Deployment&assigned=pm'
+                  : content.text.startsWith('Your M&S queue')
+                    ? '/projects?assigned=ms'
+                    : content.text.startsWith('Tier 3')
+                      ? '/projects?tier=Tier3'
+                      : '/projects'
 
   return (
     <div

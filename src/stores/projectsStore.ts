@@ -27,6 +27,11 @@ import {
   isBaGateMandatory,
   uatPassed,
 } from '@/lib/baArtifacts'
+import {
+  canAssignDataEngineer,
+  canAssignMaintenanceOwner,
+  canAssignProgramManager,
+} from '@/lib/deliverySlots'
 import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
@@ -69,6 +74,8 @@ type QualifyPayload = {
   tierRationale: string
   rewardCategory: RewardCategory
   businessAnalystId?: string | null
+  dataEngineerId?: string | null
+  programManagerId?: string | null
 }
 
 const QUALIFY_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
@@ -144,6 +151,21 @@ type ProjectsStore = {
   assignBusinessAnalyst: (
     projectId: string,
     baUserId: string | null,
+    actor: User,
+  ) => void
+  assignDataEngineer: (
+    projectId: string,
+    userId: string | null,
+    actor: User,
+  ) => void
+  assignProgramManager: (
+    projectId: string,
+    userId: string | null,
+    actor: User,
+  ) => void
+  assignMaintenanceOwner: (
+    projectId: string,
+    userId: string | null,
     actor: User,
   ) => void
   saveRequirements: (
@@ -289,6 +311,9 @@ function emptyV3Fields(timestamp: string) {
     rewardCategory: null as Project['rewardCategory'],
     ehsCoordinatorId: null as string | null,
     businessAnalystId: null as string | null,
+    dataEngineerId: null as string | null,
+    programManagerId: null as string | null,
+    maintenanceOwnerId: null as string | null,
     qualification: null as Project['qualification'],
     readiness: null as Project['readiness'],
     requirements: null as Project['requirements'],
@@ -472,8 +497,8 @@ export const useProjectsStore = create<ProjectsStore>()(
 
         // Box so TS tracks mutation inside the set() callback.
         const pendingNotify: {
-          current: { project: Project; kind: Parameters<typeof notify>[1] } | null
-        } = { current: null }
+          current: { project: Project; kind: Parameters<typeof notify>[1] }[]
+        } = { current: [] }
 
         set((state) => ({
           projects: state.projects.map((p) => {
@@ -509,21 +534,28 @@ export const useProjectsStore = create<ProjectsStore>()(
               fromStage !== 'Development' &&
               next.businessAnalystId
             ) {
-              pendingNotify.current = { project: next, kind: 'requirements-requested' }
-            } else if (
+              pendingNotify.current.push({ project: next, kind: 'requirements-requested' })
+            }
+            if (toStage === 'Development' && fromStage !== 'Development') {
+              pendingNotify.current.push({ project: next, kind: 'development-started' })
+            }
+            if (
               toStage === 'Deployment' &&
               fromStage !== 'Deployment' &&
               next.businessAnalystId
             ) {
-              pendingNotify.current = { project: next, kind: 'uat-requested' }
+              pendingNotify.current.push({ project: next, kind: 'uat-requested' })
+            }
+            if (toStage === 'Deployment' && fromStage !== 'Deployment') {
+              pendingNotify.current.push({ project: next, kind: 'deployment-started' })
             }
 
             return next
           }),
         }))
 
-        if (pendingNotify.current) {
-          notify(pendingNotify.current.project, pendingNotify.current.kind, actor)
+        for (const item of pendingNotify.current) {
+          notify(item.project, item.kind, actor)
         }
       },
 
@@ -580,6 +612,14 @@ export const useProjectsStore = create<ProjectsStore>()(
                     payload.businessAnalystId !== undefined
                       ? payload.businessAnalystId
                       : p.businessAnalystId,
+                  dataEngineerId:
+                    payload.dataEngineerId !== undefined
+                      ? payload.dataEngineerId
+                      : p.dataEngineerId,
+                  programManagerId:
+                    payload.programManagerId !== undefined
+                      ? payload.programManagerId
+                      : p.programManagerId,
                   currentStage: 'Policy' as const,
                   stageStatus: {
                     ...p.stageStatus,
@@ -888,9 +928,11 @@ export const useProjectsStore = create<ProjectsStore>()(
             notify(updated, 'ehs-review-requested', actor)
           } else {
             notify(updated, 'approved', actor)
+            notify(updated, 'go-live', actor)
             if (updated.businessAnalystId) {
               notify(updated, 'requirements-requested', actor)
             }
+            notify(updated, 'development-started', actor)
           }
         }
       },
@@ -974,9 +1016,11 @@ export const useProjectsStore = create<ProjectsStore>()(
         const updated = get().projects.find((p) => p.id === projectId)
         if (updated) {
           notify(updated, 'ehs-approved', actor)
+          notify(updated, 'go-live', actor)
           if (updated.businessAnalystId) {
             notify(updated, 'requirements-requested', actor)
           }
+          notify(updated, 'development-started', actor)
         }
       },
 
@@ -1355,6 +1399,114 @@ export const useProjectsStore = create<ProjectsStore>()(
               ? {
                   ...p,
                   businessAnalystId: baUserId,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      assignDataEngineer: (projectId, userId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canAssignDataEngineer(actor, userId)) {
+          throw new Error(
+            'Only Governance Lead, AI Program Manager, Admin, or a Data Engineer claiming themselves can assign the Data Engineer.',
+          )
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: userId
+            ? `Assigned Data Engineer: ${userId}.`
+            : 'Cleared Data Engineer assignment.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  dataEngineerId: userId,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      assignProgramManager: (projectId, userId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canAssignProgramManager(actor, userId)) {
+          throw new Error(
+            'Only Governance Lead, AI Program Manager, Admin, or a Program Manager claiming themselves can assign the Program Manager.',
+          )
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: userId
+            ? `Assigned Program Manager: ${userId}.`
+            : 'Cleared Program Manager assignment.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  programManagerId: userId,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      assignMaintenanceOwner: (projectId, userId, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canAssignMaintenanceOwner(actor, userId)) {
+          throw new Error(
+            'Only Governance Lead, AI Program Manager, Admin, or Maintenance & Sustainability claiming themselves can assign the Maintenance Owner.',
+          )
+        }
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: userId
+            ? `Assigned Maintenance Owner: ${userId}.`
+            : 'Cleared Maintenance Owner assignment.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  maintenanceOwnerId: userId,
                   auditLog: [...p.auditLog, transition],
                   updatedAt: timestamp,
                   lastActivityAt: timestamp,

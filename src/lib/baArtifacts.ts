@@ -32,14 +32,7 @@ export function canEditUat(project: Project, user: User | null): boolean {
   return canEditRequirements(project, user)
 }
 
-export function canAssignBusinessAnalyst(user: User | null): boolean {
-  if (!user) return false
-  return (
-    user.role === 'Admin' ||
-    user.role === 'GovernanceLead' ||
-    user.role === 'AIProgramManager'
-  )
-}
+export { canAssignBusinessAnalyst } from '@/lib/deliverySlots'
 
 /**
  * Whether Development → Completed is allowed for this actor.

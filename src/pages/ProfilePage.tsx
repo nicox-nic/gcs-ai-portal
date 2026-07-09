@@ -65,8 +65,58 @@ export function ProfilePage() {
       )
   }, [projects, currentUser])
 
+  const deAssigned = useMemo(() => {
+    if (!currentUser) return []
+    return projects
+      .filter((project) => project.dataEngineerId === currentUser.id)
+      .sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      )
+  }, [projects, currentUser])
+
+  const pmAssigned = useMemo(() => {
+    if (!currentUser) return []
+    return projects
+      .filter((project) => project.programManagerId === currentUser.id)
+      .sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      )
+  }, [projects, currentUser])
+
+  const msAssigned = useMemo(() => {
+    if (!currentUser) return []
+    return projects
+      .filter((project) => project.maintenanceOwnerId === currentUser.id)
+      .sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      )
+  }, [projects, currentUser])
+
   const drafts = myProjects.filter((project) => DRAFT_STATUSES.has(project.status))
   const active = myProjects.filter((project) => !DRAFT_STATUSES.has(project.status))
+
+  const assignedSections: { title: string; blurb: string; items: typeof baAssigned }[] = [
+    {
+      title: 'Assigned to me (BA)',
+      blurb: 'Projects where you are the assigned Business Analyst for requirements and UAT.',
+      items: baAssigned,
+    },
+    {
+      title: 'Assigned to me (DE)',
+      blurb: 'Projects where you are the lead Data Engineer (Development owner-of-record).',
+      items: deAssigned,
+    },
+    {
+      title: 'Assigned to me (PM)',
+      blurb: 'Projects where you are the assigned Program Manager (deployment lead).',
+      items: pmAssigned,
+    },
+    {
+      title: 'Assigned to me (M&S)',
+      blurb: 'Projects where you are the Maintenance Owner for live operations.',
+      items: msAssigned,
+    },
+  ]
 
   if (!currentUser) {
     return null
@@ -178,23 +228,23 @@ export function ProfilePage() {
         )}
       </section>
 
-      <section className="mt-6 space-y-3">
-        <div>
-          <h2 className="mb-1 text-sm font-medium text-stone-900">Assigned to me (BA)</h2>
-          <p className="mb-3 text-[11px] text-stone-500">
-            Projects where you are the assigned Business Analyst for requirements and UAT.
-          </p>
-        </div>
-        {baAssigned.length === 0 ? (
-          <p className="text-xs text-stone-500">No projects assigned to you as BA.</p>
-        ) : (
-          <div className="space-y-2">
-            {baAssigned.map((project) => (
-              <ProjectEntryRow key={project.id} project={project} />
-            ))}
+      {assignedSections.map((section) => (
+        <section key={section.title} className="mt-6 space-y-3">
+          <div>
+            <h2 className="mb-1 text-sm font-medium text-stone-900">{section.title}</h2>
+            <p className="mb-3 text-[11px] text-stone-500">{section.blurb}</p>
           </div>
-        )}
-      </section>
+          {section.items.length === 0 ? (
+            <p className="text-xs text-stone-500">No projects in this slot.</p>
+          ) : (
+            <div className="space-y-2">
+              {section.items.map((project) => (
+                <ProjectEntryRow key={project.id} project={project} />
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
     </>
   )
 }
