@@ -82,9 +82,9 @@ Sections: Company & Product Overview · AI System Description · Data Governance
 
 ## Push / deploy
 
-- Commit: `feat(supplier): Vendor AI-SAQ for R&C + remediation verification [Phase 13]`  
-- Includes untracked `docs/refactor1/AUDIT-*.md`  
-- `git push origin main` — Phases **9–13** deployed together  
-- Confirm Vercel production deploy for this push SHA in the hosting dashboard  
+- Commit: `60161e5` — `feat(supplier): Vendor AI-SAQ for R&C + remediation verification [Phase 13]`  
+- Includes `docs/refactor1/AUDIT-*.md`  
+- `git push origin main` (`e6486b5..60161e5`) — Phases **9–13** deployed together  
+- **Vercel:** Deployment completed for `60161e5` ([deploy](https://vercel.com/arcelocabangal-9817s-projects/gcs-ai-portal/EiaimJZ4MBmNt5NJP9wi5U89Y77t))  
 
 **Remediation sequence (9–13) is complete and deployed.**
