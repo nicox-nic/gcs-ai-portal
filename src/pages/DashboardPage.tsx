@@ -148,9 +148,20 @@ function RoleCallout() {
     }
   } else if (
     currentUser.role === 'MaintenanceSustainability' &&
-    (stats.msActiveQueue > 0 || stats.msIdleAssignedQueue > 0)
+    (stats.msActiveQueue > 0 ||
+      stats.msIdleAssignedQueue > 0 ||
+      stats.msIncidentQueue > 0 ||
+      stats.msDriftQueue > 0)
   ) {
     const parts: string[] = []
+    if (stats.msIncidentQueue > 0) {
+      parts.push(
+        `${stats.msIncidentQueue} with open incident${stats.msIncidentQueue === 1 ? '' : 's'}`,
+      )
+    }
+    if (stats.msDriftQueue > 0) {
+      parts.push(`${stats.msDriftQueue} with drift flagged`)
+    }
     if (stats.msActiveQueue > 0) {
       parts.push(`${stats.msActiveQueue} Active`)
     }
@@ -160,7 +171,11 @@ function RoleCallout() {
     content = {
       text: 'Your M&S queue:',
       suffix: ` — ${parts.join('; ')}`,
-      count: stats.msActiveQueue + stats.msIdleAssignedQueue,
+      count:
+        stats.msIncidentQueue +
+        stats.msDriftQueue +
+        stats.msActiveQueue +
+        stats.msIdleAssignedQueue,
       className: 'border-green-200 bg-[#EAF3DE] text-green-900',
       icon: ShieldCheck,
     }

@@ -13,6 +13,7 @@ import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { TierBadge } from '@/components/common/TierBadge'
 import { DeliverySlotSelect } from '@/components/project/DeliverySlotSelect'
+import { HealthChip } from '@/components/project/OperationsPanel'
 import { LifecycleStepper } from '@/components/project/LifecycleStepper'
 import { Button } from '@/components/ui/button'
 import { stageProgress } from '@/lib/lifecycle'
@@ -58,6 +59,7 @@ export function ProjectHeaderCard({
               <h1 className="text-[17px] font-semibold text-stone-900">{project.title}</h1>
               <StatusBadge kind="project" status={project.status} />
               {project.tier && <TierBadge tier={project.tier} />}
+              <HealthChip project={project} />
               <span className="rounded-sm bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#3C3489]">
                 {humanizeStage(project.currentStage)}
               </span>

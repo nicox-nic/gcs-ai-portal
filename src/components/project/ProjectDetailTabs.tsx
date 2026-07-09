@@ -21,6 +21,7 @@ import {
   ToolRankingCard,
 } from '@/components/recommendations/RecommendationSections'
 import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
+import { OperationsPanel } from '@/components/project/OperationsPanel'
 import { StatusGateActions } from '@/components/project/StatusGateActions'
 import { ToolStackChips } from '@/components/common/ToolStackChips'
 import { Button } from '@/components/ui/button'
@@ -443,6 +444,14 @@ export function ProjectOverviewTab({
           {project.currentStage === 'Deployment' && (
             <UatPanel project={project} currentUser={currentUser} />
           )}
+          {(project.currentStage === 'Use' ||
+            (project.status === 'Active' && project.operations)) && (
+            <OperationsPanel
+              project={project}
+              currentUser={currentUser}
+              compact={project.currentStage !== 'Use'}
+            />
+          )}
 
           <TransitionButtons
             project={project}
@@ -603,6 +612,9 @@ export function ProjectLifecycleTab({
             )}
             {isCurrent && meta.stage === 'Deployment' && (
               <UatPanel project={project} currentUser={currentUser} />
+            )}
+            {isCurrent && meta.stage === 'Use' && (
+              <OperationsPanel project={project} currentUser={currentUser} />
             )}
             {isCurrent && (
               <TransitionButtons

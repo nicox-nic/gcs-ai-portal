@@ -208,6 +208,29 @@ export interface UatArtifact {
   signedOffAt: string | null
 }
 
+export type HealthState = 'Healthy' | 'Watch' | 'Incident'
+export type DriftState = 'None' | 'Suspected' | 'Confirmed'
+export type IncidentSeverity = 'Low' | 'Medium' | 'High'
+export type IncidentStatus = 'Open' | 'Closed'
+
+export interface Incident {
+  id: string
+  openedAt: string
+  severity: IncidentSeverity
+  summary: string
+  status: IncidentStatus
+  closedAt: string | null
+  note: string
+}
+
+export interface OperationsRecord {
+  health: HealthState
+  incidents: Incident[]
+  drift: DriftState
+  driftNote: string
+  lastReviewedAt: string | null
+}
+
 export interface Project {
   id: string
   title: string
@@ -250,6 +273,8 @@ export interface Project {
   requirements: RequirementsArtifact | null
   /** BA UAT artifact — null until started. */
   uat: UatArtifact | null
+  /** M&S operations overlay — null until go-live. */
+  operations: OperationsRecord | null
   activeSince: string | null
   lastActivityAt: string
   sponsorDecision: 'Approved' | 'Disapproved' | null
@@ -286,6 +311,9 @@ export type NotificationKind =
   | 'development-started'
   | 'deployment-started'
   | 'go-live'
+  | 'incident-opened'
+  | 'incident-closed'
+  | 'drift-flagged'
 
 export interface Notification {
   id: string
@@ -315,6 +343,8 @@ export interface CiPortalRecord {
   maintenanceOwnerName: string
   requirementsStatus: string
   uatStatus: string
+  healthStatus: string
+  driftStatus: string
   group: Group
   site: Site
   createdAt: string

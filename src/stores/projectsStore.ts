@@ -32,6 +32,12 @@ import {
   canAssignMaintenanceOwner,
   canAssignProgramManager,
 } from '@/lib/deliverySlots'
+import {
+  canOperate,
+  emptyOperations,
+  hasOpenIncident,
+  isDriftFlagged,
+} from '@/lib/operations'
 import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
@@ -55,6 +61,9 @@ import type {
   ToolStackEntry,
   UatArtifact,
   User,
+  HealthState,
+  DriftState,
+  IncidentSeverity,
 } from '@/types'
 
 type CreateProjectInput = {
@@ -168,6 +177,25 @@ type ProjectsStore = {
     userId: string | null,
     actor: User,
   ) => void
+  setHealthStatus: (projectId: string, health: HealthState, actor: User) => void
+  logIncident: (
+    projectId: string,
+    payload: { severity: IncidentSeverity; summary: string; note: string },
+    actor: User,
+  ) => void
+  closeIncident: (
+    projectId: string,
+    incidentId: string,
+    note: string,
+    actor: User,
+  ) => void
+  setDrift: (
+    projectId: string,
+    drift: DriftState,
+    note: string,
+    actor: User,
+  ) => void
+  recordUseReview: (projectId: string, note: string, actor: User) => void
   saveRequirements: (
     projectId: string,
     artifact: RequirementsArtifact,
@@ -300,6 +328,7 @@ function activateProjectFields(project: Project, timestamp: string): Partial<Pro
       ...project.stageStatus,
       Development: 'InProgress',
     },
+    operations: project.operations ?? emptyOperations(),
   }
 }
 
@@ -318,6 +347,7 @@ function emptyV3Fields(timestamp: string) {
     readiness: null as Project['readiness'],
     requirements: null as Project['requirements'],
     uat: null as Project['uat'],
+    operations: null as Project['operations'],
     activeSince: null as string | null,
     lastActivityAt: timestamp,
     sponsorDecision: null as Project['sponsorDecision'],
@@ -1507,6 +1537,231 @@ export const useProjectsStore = create<ProjectsStore>()(
               ? {
                   ...p,
                   maintenanceOwnerId: userId,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      setHealthStatus: (projectId, health, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canOperate(project, actor)) {
+          throw new Error(
+            'Only the assigned Maintenance Owner, Admin, or M&S (when unassigned) can set health status.',
+          )
+        }
+        if (hasOpenIncident(project) && health !== 'Incident') {
+          throw new Error('Cannot set health while open incidents exist — close them first.')
+        }
+        const timestamp = nowIso()
+        const ops = project.operations ?? emptyOperations()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Health status set to ${health}.`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  operations: { ...ops, health },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
+      logIncident: (projectId, payload, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canOperate(project, actor)) {
+          throw new Error(
+            'Only the assigned Maintenance Owner, Admin, or M&S (when unassigned) can log incidents.',
+          )
+        }
+        if (!payload.summary.trim()) throw new Error('Incident summary is required.')
+        const timestamp = nowIso()
+        const ops = project.operations ?? emptyOperations()
+        const incident = {
+          id: `inc-${nanoid(6)}`,
+          openedAt: timestamp,
+          severity: payload.severity,
+          summary: payload.summary.trim(),
+          status: 'Open' as const,
+          closedAt: null,
+          note: payload.note.trim(),
+        }
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Incident opened (${payload.severity}): ${payload.summary.trim()}`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  operations: {
+                    ...ops,
+                    health: 'Incident' as const,
+                    incidents: [...ops.incidents, incident],
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'incident-opened', actor)
+      },
+
+      closeIncident: (projectId, incidentId, note, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canOperate(project, actor)) {
+          throw new Error(
+            'Only the assigned Maintenance Owner, Admin, or M&S (when unassigned) can close incidents.',
+          )
+        }
+        const ops = project.operations ?? emptyOperations()
+        const target = ops.incidents.find((i) => i.id === incidentId)
+        if (!target || target.status !== 'Open') {
+          throw new Error('Open incident not found.')
+        }
+        const timestamp = nowIso()
+        const nextIncidents = ops.incidents.map((i) =>
+          i.id === incidentId
+            ? {
+                ...i,
+                status: 'Closed' as const,
+                closedAt: timestamp,
+                note: note.trim() ? `${i.note}${i.note ? ' · ' : ''}${note.trim()}` : i.note,
+              }
+            : i,
+        )
+        const stillOpen = nextIncidents.some((i) => i.status === 'Open')
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Incident closed: ${target.summary}${note.trim() ? ` — ${note.trim()}` : ''}`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  operations: {
+                    ...ops,
+                    incidents: nextIncidents,
+                    health: stillOpen ? ('Incident' as const) : ('Watch' as const),
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'incident-closed', actor)
+      },
+
+      setDrift: (projectId, drift, note, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canOperate(project, actor)) {
+          throw new Error(
+            'Only the assigned Maintenance Owner, Admin, or M&S (when unassigned) can set drift.',
+          )
+        }
+        const timestamp = nowIso()
+        const ops = project.operations ?? emptyOperations()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Drift set to ${drift}${note.trim() ? `: ${note.trim()}` : '.'}`,
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  operations: {
+                    ...ops,
+                    drift,
+                    driftNote: note.trim(),
+                  },
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated && isDriftFlagged(drift)) {
+          notify(updated, 'drift-flagged', actor)
+        }
+      },
+
+      recordUseReview: (projectId, note, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canOperate(project, actor)) {
+          throw new Error(
+            'Only the assigned Maintenance Owner, Admin, or M&S (when unassigned) can record a Use review.',
+          )
+        }
+        const timestamp = nowIso()
+        const ops = project.operations ?? emptyOperations()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: note.trim()
+            ? `Use monitoring review: ${note.trim()}`
+            : 'Use monitoring review recorded.',
+          timestamp,
+        })
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  operations: { ...ops, lastReviewedAt: timestamp },
                   auditLog: [...p.auditLog, transition],
                   updatedAt: timestamp,
                   lastActivityAt: timestamp,

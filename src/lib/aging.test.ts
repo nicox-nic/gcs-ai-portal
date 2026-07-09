@@ -17,6 +17,7 @@ function projectAt(status: Project['status'], lastActivityAt: string): Project {
     dataEngineerId: null,
     programManagerId: null,
     maintenanceOwnerId: null,
+    operations: null,
     group: 'Engineering',
     site: 'Cebu',
     department: 'Test',

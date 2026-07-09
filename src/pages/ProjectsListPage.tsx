@@ -27,6 +27,7 @@ import { useFilteredProjects } from '@/hooks/useFilteredProjects'
 import { SEQUENTIAL_LIFECYCLE_STAGES, stageProgress } from '@/lib/lifecycle'
 import { getUserDisplayName } from '@/lib/projectDisplay'
 import { PROJECT_STATUSES } from '@/lib/projectStatus'
+import { HealthChip } from '@/components/project/OperationsPanel'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { useAuthStore } from '@/stores/authStore'
 import { SUBMIT_ROLES } from '@/lib/roles'
@@ -227,6 +228,7 @@ export function ProjectsListPage() {
                           {project.title}
                         </Link>
                         {project.tier && <TierBadge tier={project.tier} compact />}
+                        <HealthChip project={project} />
                       </div>
                       <div className="mt-1.5 h-1 w-full max-w-[180px] overflow-hidden rounded-full bg-stone-100">
                         <div

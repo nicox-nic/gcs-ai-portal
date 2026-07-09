@@ -12,6 +12,7 @@ function baseProject(overrides?: Partial<Project>): Project {
     dataEngineerId: null,
     programManagerId: null,
     maintenanceOwnerId: null,
+    operations: null,
     group: 'Engineering',
     site: 'Cebu',
     department: 'Test',

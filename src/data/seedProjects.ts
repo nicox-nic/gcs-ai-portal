@@ -29,6 +29,7 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     readiness: null,
     requirements: null,
     uat: null,
+    operations: null,
     activeSince: opts?.activeSince ?? null,
     lastActivityAt: updatedAt,
     sponsorDecision: null,
@@ -58,6 +59,66 @@ function passedUat(at: string, description: string) {
     notes: '',
     signedOffBy: 'usr-ba',
     signedOffAt: at,
+  }
+}
+
+function opsHealthy(reviewedAt: string) {
+  return {
+    health: 'Healthy' as const,
+    incidents: [],
+    drift: 'None' as const,
+    driftNote: '',
+    lastReviewedAt: reviewedAt,
+  }
+}
+
+function opsWatchWithClosedIncident(openedAt: string, closedAt: string) {
+  return {
+    health: 'Watch' as const,
+    incidents: [
+      {
+        id: 'inc-closed-1',
+        openedAt,
+        severity: 'Medium' as const,
+        summary: 'Transient spike in false-positive alerts during weekend batch.',
+        status: 'Closed' as const,
+        closedAt,
+        note: 'Root cause: stale feature cache. Cleared after restart.',
+      },
+    ],
+    drift: 'None' as const,
+    driftNote: '',
+    lastReviewedAt: closedAt,
+  }
+}
+
+function opsOpenHighIncident(openedAt: string) {
+  return {
+    health: 'Incident' as const,
+    incidents: [
+      {
+        id: 'inc-open-high-1',
+        openedAt,
+        severity: 'High' as const,
+        summary: 'Routing suggestions sending tickets to wrong queue in Cebu pilot.',
+        status: 'Open' as const,
+        closedAt: null,
+        note: 'Users report ~15% misroutes since last model refresh.',
+      },
+    ],
+    drift: 'None' as const,
+    driftNote: '',
+    lastReviewedAt: null,
+  }
+}
+
+function opsDriftSuspected(reviewedAt: string) {
+  return {
+    health: 'Watch' as const,
+    incidents: [],
+    drift: 'Suspected' as const,
+    driftNote: 'Prediction MAE trending up vs baseline on last 14 days of holdout.',
+    lastReviewedAt: reviewedAt,
   }
 }
 
@@ -306,7 +367,7 @@ export const SEED_PROJECTS: Project[] = [
     businessAnalystId: 'usr-ba',
     dataEngineerId: 'usr-data',
     programManagerId: 'usr-pm',
-    maintenanceOwnerId: null,
+    maintenanceOwnerId: 'usr-maint',
     requirements: confirmedRequirements(
       daysAgo(20),
       'Triage agent must cite KB article IDs on every suggested resolution.',
@@ -329,6 +390,7 @@ export const SEED_PROJECTS: Project[] = [
       signedOffBy: null,
       signedOffAt: null,
     },
+    operations: opsOpenHighIncident(daysAgo(1)),
     sponsorValidated: false,
   },
   {
@@ -815,6 +877,7 @@ export const SEED_PROJECTS: Project[] = [
       'UAT report exports must match the approved template columns.',
     ),
     uat: passedUat(daysAgo(30), 'Ops lead accepts automated UAT report for one cycle.'),
+    operations: opsWatchWithClosedIncident(daysAgo(50), daysAgo(45)),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
   },
@@ -948,6 +1011,7 @@ export const SEED_PROJECTS: Project[] = [
       'Dashboard refreshes overnight from approved Marketing data mart.',
     ),
     uat: passedUat(daysAgo(8), 'Marketing lead accepts published dashboard layout.'),
+    operations: opsHealthy(daysAgo(1)),
     sponsorValidated: false,
   },
   {
@@ -1098,6 +1162,7 @@ export const SEED_PROJECTS: Project[] = [
       'Forecast must not auto-reorder parts without planner confirmation.',
     ),
     uat: passedUat(daysAgo(70), 'Planners accept forecast accuracy on Costa Rica pilot.'),
+    operations: opsHealthy(daysAgo(10)),
     sponsorValidated: true,
     sponsorDecision: 'Approved',
   },
@@ -1716,6 +1781,7 @@ export const SEED_PROJECTS: Project[] = [
     dataEngineerId: 'usr-data',
     programManagerId: 'usr-pm',
     maintenanceOwnerId: 'usr-maint',
+    operations: opsDriftSuspected(daysAgo(5)),
     sponsorValidated: false,
   },
   {

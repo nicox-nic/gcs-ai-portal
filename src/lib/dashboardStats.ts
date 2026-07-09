@@ -2,6 +2,7 @@ import type { Group, LifecycleStage, Project, ProjectStatus, ProjectTier, Role, 
 import { SEED_USERS } from '@/data/seedRoles'
 import { GROUP_HEADCOUNT, SITE_HEADCOUNT } from '@/data/seedOrg'
 import { requirementsComplete, uatPassed } from '@/lib/baArtifacts'
+import { hasOpenIncident, isDriftFlagged } from '@/lib/operations'
 import { PROJECT_STATUSES, STATUS_META } from '@/lib/projectStatus'
 import { TIER_META } from '@/lib/tiering'
 import { ROLE_STYLES } from '@/lib/roleStyles'
@@ -135,6 +136,8 @@ export type DashboardStats = {
   pmDeploymentQueue: number
   msActiveQueue: number
   msIdleAssignedQueue: number
+  msIncidentQueue: number
+  msDriftQueue: number
   queues: QueueStat[]
   statusPipeline: StatusPipelineDatum[]
   tierDistribution: TierDistributionDatum[]
@@ -274,6 +277,19 @@ export function computeDashboardStats(
           p.maintenanceOwnerId === uid &&
           (p.status === 'Idle' ||
             Object.values(p.stageStatus).some((status) => status === 'Blocked')),
+      ).length
+    : 0
+  const msIncidentQueue = uid
+    ? projects.filter(
+        (p) => p.maintenanceOwnerId === uid && hasOpenIncident(p),
+      ).length
+    : 0
+  const msDriftQueue = uid
+    ? projects.filter(
+        (p) =>
+          p.maintenanceOwnerId === uid &&
+          p.operations &&
+          isDriftFlagged(p.operations.drift),
       ).length
     : 0
 
@@ -496,6 +512,8 @@ export function computeDashboardStats(
     pmDeploymentQueue,
     msActiveQueue,
     msIdleAssignedQueue,
+    msIncidentQueue,
+    msDriftQueue,
     queues,
     statusPipeline,
     tierDistribution,

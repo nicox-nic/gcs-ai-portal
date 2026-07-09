@@ -40,6 +40,17 @@ describe('recipientsFor (Phase 9–10)', () => {
     expect(recipientsFor('go-live', project).to).toEqual(['usr-maint'])
   })
 
+  it('incident-opened TO is assigned M&S; drift-flagged CCs DE', () => {
+    const project = baseProject({
+      maintenanceOwnerId: 'usr-maint',
+      dataEngineerId: 'usr-data',
+    })
+    expect(recipientsFor('incident-opened', project).to).toEqual(['usr-maint'])
+    const drift = recipientsFor('drift-flagged', project)
+    expect(drift.to).toEqual(['usr-maint'])
+    expect(drift.cc).toContain('usr-data')
+  })
+
   it('uat-signed-off TO prefers assigned PM and DE', () => {
     const project = baseProject({
       dataEngineerId: 'usr-data',

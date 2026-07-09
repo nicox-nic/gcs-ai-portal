@@ -78,9 +78,9 @@ export const LIFECYCLE_STAGES: LifecycleStageMeta[] = [
     label: 'Use',
     order: 6,
     description:
-      'Day-to-day operation — performance monitoring, feedback collection, and incident response.',
+      'Day-to-day operation — performance monitoring, feedback, incident response, and model drift ownership (M&S).',
     primaryOwnerRole: 'MaintenanceSustainability',
-    supportingRoles: ['RiskCompliance'],
+    supportingRoles: ['RiskCompliance', 'DataEngineering'],
   },
   {
     stage: 'Improvement',

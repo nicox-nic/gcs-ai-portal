@@ -22,6 +22,7 @@ function stubProject(partial: {
     dataEngineerId: null,
     programManagerId: null,
     maintenanceOwnerId: null,
+    operations: null,
     group: 'Engineering',
     site: 'Cebu',
     department: 'Demo',

@@ -95,6 +95,18 @@ export function recipientsFor(
       return { to: pm, cc: unique([...gov, ...de, project.businessAnalystId]) }
     case 'go-live':
       return { to: ms, cc: unique([...gov, ...owners]) }
+    case 'incident-opened':
+      return {
+        to: ms,
+        cc: unique([...gov, ...pm]),
+      }
+    case 'incident-closed':
+      return { to: unique([...owners, ...ms]), cc: gov }
+    case 'drift-flagged':
+      return {
+        to: ms,
+        cc: unique([...gov, ...de]),
+      }
     default:
       return { to: unique([submitter]), cc: gov }
   }
@@ -126,6 +138,9 @@ const SUBJECTS: Record<NotificationKind, (title: string) => string> = {
   'development-started': (t) => `[GCS AI] Development started — ${t}`,
   'deployment-started': (t) => `[GCS AI] Deployment started — ${t}`,
   'go-live': (t) => `[GCS AI] Project went live — ${t}`,
+  'incident-opened': (t) => `[GCS AI] Incident opened — ${t}`,
+  'incident-closed': (t) => `[GCS AI] Incident closed — ${t}`,
+  'drift-flagged': (t) => `[GCS AI] Model drift flagged — ${t}`,
 }
 
 function defaultBody(kind: NotificationKind, project: Project, actor?: User | null): string {

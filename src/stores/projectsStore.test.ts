@@ -181,6 +181,79 @@ describe('projectsStore Phase 10 delivery slots', () => {
   })
 })
 
+describe('projectsStore Phase 11 operations', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useCatalogStore.getState().resetCatalog?.()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('go-live initialises operations via activateProjectFields', () => {
+    const project = makeQualifiedProject({
+      toolStack: [{ toolId: 'tool-sharepoint', role: 'primary' }],
+      status: 'Submitted',
+      ehsCoordinatorId: null,
+      operations: null,
+    })
+    useProjectsStore.getState().approveSubmission(project.id, userByRole('GovernanceLead'))
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.status).toBe('Active')
+    expect(updated?.operations).toEqual({
+      health: 'Healthy',
+      incidents: [],
+      drift: 'None',
+      driftNote: '',
+      lastReviewedAt: null,
+    })
+  })
+
+  it('logIncident forces health Incident; close last returns Watch', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      maintenanceOwnerId: 'usr-maint',
+      operations: {
+        health: 'Healthy',
+        incidents: [],
+        drift: 'None',
+        driftNote: '',
+        lastReviewedAt: null,
+      },
+    })
+    const ms = userByRole('MaintenanceSustainability')
+    useProjectsStore.getState().logIncident(
+      project.id,
+      { severity: 'High', summary: 'Outage', note: 'n' },
+      ms,
+    )
+    let updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.operations?.health).toBe('Incident')
+    expect(updated?.operations?.incidents).toHaveLength(1)
+    const incidentId = updated!.operations!.incidents[0].id
+    useProjectsStore.getState().closeIncident(project.id, incidentId, 'fixed', ms)
+    updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.operations?.health).toBe('Watch')
+    expect(updated?.operations?.incidents[0].status).toBe('Closed')
+  })
+
+  it('setDrift notifies when Suspected', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      maintenanceOwnerId: 'usr-maint',
+      operations: {
+        health: 'Healthy',
+        incidents: [],
+        drift: 'None',
+        driftNote: '',
+        lastReviewedAt: null,
+      },
+    })
+    const ms = userByRole('MaintenanceSustainability')
+    useProjectsStore.getState().setDrift(project.id, 'Suspected', 'MAE up', ms)
+    const notes = useNotificationsStore.getState().notifications
+    expect(notes.some((n) => n.kind === 'drift-flagged' && n.projectId === project.id)).toBe(true)
+  })
+})
+
 describe('projectsStore Phase 5 closure', () => {
   beforeEach(() => {
     useProjectsStore.getState().resetProjects()

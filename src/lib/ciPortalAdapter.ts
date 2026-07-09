@@ -4,6 +4,7 @@
  */
 import { SEED_USERS } from '@/data/seedRoles'
 import { requirementsCiLabel, uatCiLabel } from '@/lib/baArtifacts'
+import { driftCiLabel, healthCiLabel } from '@/lib/operations'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { CiPortalRecord, Project } from '@/types'
 
@@ -33,6 +34,8 @@ function toRecord(project: Project): CiPortalRecord {
     maintenanceOwnerName: displayName(project.maintenanceOwnerId),
     requirementsStatus: requirementsCiLabel(project),
     uatStatus: uatCiLabel(project),
+    healthStatus: healthCiLabel(project),
+    driftStatus: driftCiLabel(project),
     group: project.group,
     site: project.site,
     createdAt: project.createdAt,
