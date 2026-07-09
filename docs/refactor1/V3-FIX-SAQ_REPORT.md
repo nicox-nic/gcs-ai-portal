@@ -30,6 +30,6 @@ Preserved stable ids `saq-01` … `saq-31` (same numbering scheme as before). Se
 
 ## Deploy
 
-- Commit: `fix(saq): replace stand-in SAQ text with real AI-SAQ workbook content`  
-- Push: `origin/main`  
-- Confirm Vercel deploy for the push SHA in the hosting dashboard.
+- Commit: `02e347d` — `fix(saq): replace stand-in SAQ text with real AI-SAQ workbook content`  
+- Push: `origin/main` (`22250a0..02e347d`)  
+- **Vercel:** Deployment completed ([deploy](https://vercel.com/arcelocabangal-9817s-projects/gcs-ai-portal/HxC8opuuNktnnD5SpVJihBiZSnnH))
