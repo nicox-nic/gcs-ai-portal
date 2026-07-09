@@ -1,7 +1,7 @@
 # V3-PHASE-8 Report — Business Analyst Delivery Involvement
 
 > Executed from `docs/refactor1/V3-PHASE-8_BA_Delivery_Involvement.md` (closes BA audit gaps #4, #7, #9, #10, #11; light touch on #2/#3).  
-> Verification: `npm run build` ✅ · `npm run test` ✅ (44 specs expected after Phase-8 store tests)  
+> Verification: `npm run build` ✅ · `npm run test` ✅ (42 specs)  
 > Git: **milestone** — committed and pushed to `main` (Vercel deploy).
 
 ## Data model
@@ -65,8 +65,8 @@ Emit points: enter Development/Deployment with BA assigned (`advanceStage`); act
 
 ## Push / deploy
 
-- Commit: (filled after push) — `feat(ba): BA assignment + gated requirements & UAT artifacts + work queue [Phase 8]`
-- Pushed to `origin/main` — Vercel production deploy from `main`.
+- Commit: `c9ff0fa` — `feat(ba): BA assignment + gated requirements & UAT artifacts + work queue [Phase 8]`
+- Pushed to `origin/main` (`e467dca..c9ff0fa`) — Vercel production deploy from `main`.
 
 ## Skipped / flagged
 
