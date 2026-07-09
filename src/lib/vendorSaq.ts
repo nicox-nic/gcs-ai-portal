@@ -1,88 +1,94 @@
 import type { Project, SaqAnswer, SaqArtifact, SaqOutcome, Tool, User } from '@/types'
 
 /**
- * Vendor AI-SAQ — 9 sections / 31 questions.
- * Exact wording should be confirmed against AI_Checklists.xlsx (Vendor SAQ sheet);
- * workbook is not in-repo, so this is a faithful ISO-42001-style stand-in.
+ * AI Supplier Self-Assessment Questionnaire (AI-SAQ).
+ * Verbatim from AI_Checklists.xlsx → Vendor SAQ sheet.
+ * Sections 1–8 = 31 scored questions; Section 9 = static declaration (not scored).
  */
+export const SAQ_TITLE = 'AI Supplier Self-Assessment Questionnaire (AI-SAQ)'
+
+/** Scored sections only (31 questions). Section 9 is SAQ_DECLARATION. */
 export const SAQ_SECTIONS: { section: string; questions: string[] }[] = [
   {
-    section: '1. Company & Product Overview',
+    section: '1. Supplier & AI Service Overview',
     questions: [
-      'Vendor legal entity and primary AI product/service are clearly identified.',
-      'Vendor provides a current description of the AI system’s intended use and limitations.',
-      'Vendor confirms the product version / model family under assessment.',
+      'Legal name of organization',
+      'Primary business location(s)',
+      'Description of AI or AI-enabled service(s) provided to Teradyne',
+      'Intended use case(s) involving Teradyne data or systems',
+      'AI lifecycle role (select all that apply; record choices in the note): Model development / Data processing / Model hosting / inference / System integration / Support / maintenance',
+      'Will your AI service process or store Teradyne data? (If yes, identify data types in the note — e.g., personal, confidential, proprietary)',
     ],
   },
   {
-    section: '2. AI System Description',
+    section: '2. Responsible AI & Ethics',
     questions: [
-      'Vendor documents model type (e.g. generative, predictive, agentic) and core capabilities.',
-      'Vendor discloses training / fine-tuning data categories at a high level.',
-      'Vendor describes known failure modes and out-of-scope uses.',
-      'Vendor provides architecture overview sufficient for Teradyne risk review.',
+      'Do you maintain a documented AI ethics or Responsible AI policy?',
+      'Have you implemented controls to mitigate bias, discrimination, or unethical outcomes in AI systems? (Briefly describe controls implemented in the note)',
+      'Is human oversight in place for AI decision-making that may impact people, customers, or business operations? (Briefly explain oversight and escalation mechanisms in the note)',
+      'Do you provide transparency regarding AI outputs, limitations, and intended use?',
     ],
   },
   {
     section: '3. Data Governance & Privacy',
     questions: [
-      'Vendor states whether customer data is used to train or improve shared models.',
-      'Vendor supports data residency / processing-location commitments required by Teradyne.',
-      'Vendor has a documented retention and deletion process for customer content.',
-      'Vendor addresses personal data / PII handling consistent with applicable privacy law.',
+      'Are all data sources used for training or operating the AI system documented and legally obtained?',
+      'Do you restrict secondary use of Teradyne data or AI outputs without written authorization?',
+      'Are data retention, deletion, and minimization controls formally defined?',
+      'Is cross-border data transfer involved? (If yes, briefly describe safeguards in place in the note)',
     ],
   },
   {
-    section: '4. Security & Access Control',
+    section: '4. Information Security Controls',
     questions: [
-      'Vendor maintains SOC 2, ISO 27001, or equivalent security attestation (or equivalent controls).',
-      'Vendor supports SSO / enterprise identity and least-privilege admin access.',
-      'Vendor encrypts data in transit and at rest with industry-standard controls.',
-      'Vendor provides vulnerability management and patch cadence for the AI service.',
+      'Do you maintain an information security management program? (If yes, list certifications — e.g., ISO 27001 — and validity in the note)',
+      'Are data encryption controls implemented for data at rest and in transit?',
+      'Are access controls based on least privilege and role-based principles?',
+      'Do you conduct regular vulnerability assessments and remediation activities?',
     ],
   },
   {
-    section: '5. Model Development & Validation',
+    section: '5. AI Model & Technology Risk',
     questions: [
-      'Vendor describes evaluation / red-team practices before release.',
-      'Vendor documents bias, fairness, or quality monitoring for material model updates.',
-      'Vendor provides change-management notice for material model or API changes.',
-      'Vendor supports customer-side validation / acceptance testing of outputs.',
+      'Who owns the AI model(s) provided to Teradyne? (Record in the note: Supplier / Teradyne / Shared / Licensed)',
+      'Do you use third-party or open-source models/components? (If yes, briefly describe vetting and licensing approach in the note)',
+      'Are model validation, testing, and performance monitoring processes established?',
+      'Do you monitor for model drift, degradation, or unintended behavior?',
     ],
   },
   {
-    section: '6. Human Oversight & Transparency',
+    section: '6. Legal, Contractual & Regulatory Compliance',
     questions: [
-      'Vendor enables human-in-the-loop or human-on-the-loop controls where required.',
-      'Vendor discloses AI-generated content or decisions to end users when appropriate.',
-      'Vendor provides explainability / audit artifacts sufficient for Teradyne oversight.',
+      'Do your AI services comply with applicable AI, privacy, and sector regulations?',
+      'Do contracts include AI-specific clauses covering ethics, IP, data protection, audit rights, and termination?',
+      'Are you willing to support Teradyne audits or assurance requests related to AI governance?',
     ],
   },
   {
-    section: '7. Incident Response & Continuity',
+    section: '7. Incident Management & Reporting',
     questions: [
-      'Vendor has a documented security / AI-incident response process with customer notification SLAs.',
-      'Vendor provides status / availability commitments suitable for production use.',
-      'Vendor supports export or exit of customer data if the engagement ends.',
+      'Do you have a documented AI incident or breach response process?',
+      'Are you contractually obligated to notify Teradyne of AI-related incidents or data breaches without undue delay?',
+      'Do you perform root cause analysis and corrective actions following AI incidents?',
     ],
   },
   {
-    section: '8. Subprocessors & Third Parties',
+    section: '8. Ongoing Monitoring & Assurance',
     questions: [
-      'Vendor maintains a current subprocessors list for AI-related processing.',
-      'Vendor flows down equivalent security and privacy obligations to subprocessors.',
-      'Vendor notifies customers of material subprocessor changes per contract.',
-    ],
-  },
-  {
-    section: '9. Contractual & Compliance Attestations',
-    questions: [
-      'NDA / MSA / DPA (as applicable) are executed or in progress with Teradyne Legal.',
-      'Vendor accepts Teradyne AI / acceptable-use constraints for this engagement.',
-      'Vendor attests compliance with applicable AI / product-safety regulations for the offered service.',
+      'Will you participate in periodic AI risk reassessments as requested by Teradyne?',
+      'Can you provide independent audit reports or compliance attestations upon request?',
+      'Will you cooperate with remediation or improvement actions if gaps are identified?',
     ],
   },
 ]
+
+/** Section 9 — Supplier Declaration (not scored; not part of saqComplete). */
+export const SAQ_DECLARATION = {
+  section: '9. Supplier Declaration',
+  certification:
+    'I certify that the information provided in this AI Supplier Self-Assessment Questionnaire is accurate and complete to the best of my knowledge.',
+  fields: ['Name', 'Title', 'Organization', 'Signature', 'Date'] as const,
+}
 
 const INTERNAL_VENDORS = new Set(
   ['teradyne', 'gcs', 'gcs internal', 'internal', 'in-house'].map((s) => s.toLowerCase()),

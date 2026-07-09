@@ -21,6 +21,8 @@ import {
   groupAnswersBySection,
   isSaqRequired,
   saqComplete,
+  SAQ_DECLARATION,
+  SAQ_TITLE,
 } from '@/lib/vendorSaq'
 import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, SaqAnswer, SaqOutcome, SaqResponse, User } from '@/types'
@@ -116,7 +118,7 @@ export function VendorSaqPanel({ project, currentUser }: PanelProps) {
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ClipboardList className="h-3.5 w-3.5 text-indigo-700" />
-          <span className="text-[11px] font-semibold text-stone-900">Vendor AI-SAQ</span>
+          <span className="text-[11px] font-semibold text-stone-900">{SAQ_TITLE}</span>
           {complete && (
             <span className="rounded-sm border border-green-200 bg-[#EAF3DE] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-green-900">
               {project.vendorSaq?.outcome}
@@ -228,6 +230,25 @@ export function VendorSaqPanel({ project, currentUser }: PanelProps) {
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="mb-3 rounded-md border-[0.5px] border-indigo-100 bg-[#EEEDFE]/60 px-2.5 py-2">
+            <p className="mb-1.5 text-[10px] font-semibold tracking-wide text-indigo-800 uppercase">
+              {SAQ_DECLARATION.section}
+            </p>
+            <p className="mb-2 text-[11px] text-stone-800 italic">
+              {SAQ_DECLARATION.certification}
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-stone-600">
+              {SAQ_DECLARATION.fields.map((field) => (
+                <span key={field}>
+                  <span className="font-medium text-stone-700">{field}:</span> ________
+                </span>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[9px] text-stone-500">
+              Declaration is not scored — complete the 31 questions above to Pass / Fail / Waive.
+            </p>
           </div>
 
           <div className="mb-2 space-y-1">

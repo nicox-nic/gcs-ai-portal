@@ -7,6 +7,8 @@ import {
   isSaqRequired,
   saqCiLabel,
   saqComplete,
+  SAQ_DECLARATION,
+  SAQ_SECTIONS,
   supplierGateBlockReason,
 } from '@/lib/vendorSaq'
 import type { Project, User } from '@/types'
@@ -118,10 +120,23 @@ function completedPass(): Project['vendorSaq'] {
 }
 
 describe('vendorSaq (Phase 13)', () => {
-  it('encodes 31 questions across 9 sections', () => {
-    expect(defaultSaqAnswers()).toHaveLength(31)
-    const sections = new Set(defaultSaqAnswers().map((a) => a.section))
-    expect(sections.size).toBe(9)
+  it('encodes 31 scored questions across 8 sections (Section 9 is declaration)', () => {
+    const answers = defaultSaqAnswers()
+    expect(answers).toHaveLength(31)
+    expect(SAQ_SECTIONS).toHaveLength(8)
+    expect(SAQ_SECTIONS.reduce((n, s) => n + s.questions.length, 0)).toBe(31)
+    const sections = new Set(answers.map((a) => a.section))
+    expect(sections.size).toBe(8)
+    expect(answers[0]?.question).toBe('Legal name of organization')
+    expect(answers[30]?.question).toMatch(/cooperate with remediation/i)
+    expect(SAQ_DECLARATION.section).toBe('9. Supplier Declaration')
+    expect(SAQ_DECLARATION.fields).toEqual([
+      'Name',
+      'Title',
+      'Organization',
+      'Signature',
+      'Date',
+    ])
   })
 
   it('isSaqRequired follows usesExternalVendor', () => {
