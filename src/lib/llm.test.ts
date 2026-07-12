@@ -27,6 +27,41 @@ describe('callLLM', () => {
     )
   })
 
+  it('omits model from the request body when the caller does not supply one', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: 'ok' } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await callLLM([{ role: 'user', content: 'hi' }])
+
+    const init = fetchMock.mock.calls[0]?.[1] as { body?: string }
+    const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>
+    expect(body).not.toHaveProperty('model')
+    expect(body.messages).toEqual([{ role: 'user', content: 'hi' }])
+  })
+
+  it('includes model in the request body when the caller supplies one', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: 'ok' } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await callLLM([{ role: 'user', content: 'hi' }], { model: 'gpt-test' })
+
+    const init = fetchMock.mock.calls[0]?.[1] as { body?: string }
+    const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>
+    expect(body.model).toBe('gpt-test')
+  })
+
   it('throws LlmError with the status on a non-OK response', async () => {
     vi.stubGlobal(
       'fetch',

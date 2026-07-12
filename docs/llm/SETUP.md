@@ -1,12 +1,14 @@
-# LLM proxy setup (Phase 0)
+# LLM proxy setup
 
-Infrastructure only — no user-facing LLM feature yet. The OpenAI API key must never appear in the client bundle.
+Serverless OpenAI proxy for the portal. The API key and model stay server-side — never use a `VITE_` prefix for these vars (that would expose them in the client bundle).
 
-## Vercel (production / preview)
+## Vercel (production / preview / development)
 
 1. Open the project in Vercel → **Settings** → **Environment Variables**.
-2. Add `OPENAI_API_KEY` for **Production**, **Preview**, and **Development**.
-3. Redeploy so the serverless function at `/api/llm` picks up the variable.
+2. Add for **Production**, **Preview**, and **Development**:
+   - `OPENAI_API_KEY` — your OpenAI secret key
+   - `OPENAI_MODEL` — model id string (recommended for draft-assist: `gpt-5.6-luna`; paste the exact string from [OpenAI models](https://platform.openai.com/docs/models))
+3. Redeploy so `/api/llm` picks up the variables.
 
 Health check (no tokens spent): `GET /api/llm` → `{ "ok": true, "keyConfigured": true|false }`.
 
@@ -20,8 +22,8 @@ vercel env pull .env.local
 vercel dev           # frontend + /api/llm together
 ```
 
-`.env.local` is gitignored via the `*.local` pattern. Do not commit API keys.
+`.env.local` (and `.env` / `.env.*`) are gitignored. Do not commit API keys. `!.env.example` is allowed if you add an example file without secrets.
 
 ## Client usage
 
-Import from `src/lib/llm.ts` only (`callLLM` / `tryCallLLM`). Callers must fall back to existing rule-based behavior on failure. Confirm `DEFAULT_MODEL` before shipping any real feature.
+Import from `src/lib/llm.ts` only (`callLLM` / `tryCallLLM`). Do not pass a `model` from feature code unless you intentionally override — omit it so the server fills `OPENAI_MODEL`. Callers must fall back to existing rule-based / manual behavior on failure.

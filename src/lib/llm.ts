@@ -13,11 +13,6 @@ export interface LlmOptions {
   temperature?: number
 }
 
-// TODO(model): confirm the correct OpenAI model string before shipping any
-// real feature. This placeholder is intentionally NOT a valid production
-// choice — it must be reviewed against the current OpenAI model list/pricing.
-export const DEFAULT_MODEL = 'MODEL_TO_BE_CONFIRMED'
-
 export class LlmError extends Error {
   readonly status?: number
 
@@ -36,10 +31,10 @@ export async function callLLM(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: opts.model ?? DEFAULT_MODEL,
+      ...(opts.model !== undefined ? { model: opts.model } : {}),
       messages,
       max_tokens: opts.maxTokens ?? 1000,
-      temperature: opts.temperature,
+      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     }),
   })
 

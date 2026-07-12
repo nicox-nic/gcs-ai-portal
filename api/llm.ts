@@ -51,6 +51,17 @@ export async function POST(request: Request) {
     })
   }
 
+  const model = body.model ?? process.env.OPENAI_MODEL
+  if (!model) {
+    return new Response(
+      JSON.stringify({
+        error:
+          'OPENAI_MODEL is not configured on the server and no model was supplied.',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
   try {
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -59,7 +70,7 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: body.model,
+        model,
         messages: body.messages,
         max_tokens: body.max_tokens ?? 1000,
         ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),

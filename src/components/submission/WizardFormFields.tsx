@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { DraftAssistControl } from '@/components/submission/DraftAssistControl'
 import { SEED_TOOLS } from '@/data/seedTools'
 import {
   INTEGRATION_TARGET_OPTIONS,
@@ -232,6 +233,11 @@ export function WizardFormFields({ currentStep, form, onChange }: WizardFormFiel
                 className="min-h-[88px] text-xs"
                 placeholder="Describe the pain point your team faces today."
               />
+              <DraftAssistControl
+                kind="background"
+                value={form.problem}
+                onAccept={(improved) => onChange({ problem: improved })}
+              />
             </div>
             <div>
               <Label className="mb-1.5 text-[11px] text-stone-700">
@@ -242,6 +248,11 @@ export function WizardFormFields({ currentStep, form, onChange }: WizardFormFiel
                 onChange={(event) => onChange({ goal: event.target.value })}
                 className="min-h-[88px] text-xs"
                 placeholder="What should the AI solution accomplish?"
+              />
+              <DraftAssistControl
+                kind="objective"
+                value={form.goal}
+                onAccept={(improved) => onChange({ goal: improved })}
               />
             </div>
             <div>
