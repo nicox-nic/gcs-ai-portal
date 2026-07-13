@@ -703,6 +703,37 @@ describe('projectsStore cancelProject notification', () => {
     expect(cancelled).toBeDefined()
     expect(cancelled?.to).toContain('usr-submitter')
   })
+
+  it('cancels an Active project and notifies the submitter', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier1',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+    })
+    useNotificationsStore.getState().clear()
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().cancelProject(project.id, 'No longer needed', gov)
+
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.status).toBe('Cancelled')
+
+    const notes = useNotificationsStore.getState().notifications
+    const cancelled = notes.find((n) => n.kind === 'cancelled' && n.projectId === project.id)
+    expect(cancelled).toBeDefined()
+    expect(cancelled?.to).toContain(project.submitterId)
+  })
 })
 
 describe('projectsStore assignDeliveryTier', () => {

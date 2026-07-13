@@ -29,4 +29,8 @@ describe('projectStatus registry', () => {
     expect(getAllowedStatusTransitions('Completed')).toEqual([])
     expect(getAllowedStatusTransitions('Cancelled')).toEqual([])
   })
+
+  it('allows Active → Cancelled', () => {
+    expect(getAllowedStatusTransitions('Active')).toContain('Cancelled')
+  })
 })

@@ -131,7 +131,7 @@ const STATUS_TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   Rejected: ['Submitted', 'Cancelled'],
   ForEHSReview: ['Active', 'EHSRejected'],
   EHSRejected: ['Submitted', 'Cancelled'],
-  Active: ['ForSponsorApproval', 'Idle'],
+  Active: ['ForSponsorApproval', 'Idle', 'Cancelled'],
   ForSponsorApproval: ['Completed', 'Disapproved'],
   Disapproved: ['Active', 'ForSponsorApproval'],
   Completed: [],
