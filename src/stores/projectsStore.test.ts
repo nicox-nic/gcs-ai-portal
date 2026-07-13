@@ -644,8 +644,9 @@ describe('projectsStore qualifyProject tier decoupling', () => {
     })
     useProjectsStore.getState().submitProject(created.id)
 
+    // Readiness Not Met on feasibility — must not block Qualify.
     const readiness = emptyReadiness()
-    readiness.feasibility = readiness.feasibility.map(() => true)
+    readiness.feasibility = readiness.feasibility.map((_, i) => i < 2)
     readiness.viability = readiness.viability.map(() => true)
     readiness.desirability = readiness.desirability.map(() => true)
 
@@ -671,5 +672,6 @@ describe('projectsStore qualifyProject tier decoupling', () => {
     expect(updated?.tier).toBeNull()
     expect(updated?.qualification?.riskTier).toBe('Medium')
     expect(updated?.rewardCategory).toBe('TeamProject')
+    expect(updated?.readiness?.feasibility.filter(Boolean).length).toBe(2)
   })
 })

@@ -654,7 +654,7 @@ export const useProjectsStore = create<ProjectsStore>()(
           )
         ) {
           throw new Error(
-            'Cannot qualify: readiness must be Met on all dimensions, at least one Section A criterion, plus reward category.',
+            'Cannot qualify: at least one Section A criterion and a reward category are required.',
           )
         }
         if (!payload.qualification.riskTier) {

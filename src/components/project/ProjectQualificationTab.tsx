@@ -408,7 +408,7 @@ export function ProjectQualificationTab({
                   : 'bg-stone-100 text-stone-600',
               )}
             >
-              {scores.allMet ? 'All dimensions met' : 'Not ready to qualify'}
+              {scores.allMet ? 'All dimensions met' : 'Informational — does not block Qualify'}
             </span>
           </div>
         </div>
