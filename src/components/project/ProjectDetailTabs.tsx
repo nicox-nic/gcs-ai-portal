@@ -352,7 +352,9 @@ export function ProjectOverviewTab({
             <div className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <TierBadge tier={project.tier} />
-                <span className="text-stone-500">Risk: {tierMeta.risk}</span>
+                <span className="text-stone-500">
+                  Risk: {project.qualification?.riskTier ?? '—'}
+                </span>
               </div>
               <p className="mb-2 text-stone-700">{tierMeta.approach}</p>
               <p className="mb-2 text-stone-600">{tierMeta.guidance}</p>
@@ -1021,10 +1023,12 @@ export function ProjectBenefitsTab({
                 {humanizeRole(approvalEntry.actorRole)}
               </p>
             )}
-            {project.tier && (
+            {project.tier ? (
               <p className="flex items-center gap-2">
                 Tier: <TierBadge tier={project.tier} />
               </p>
+            ) : (
+              <p>Tier: Not yet assigned</p>
             )}
           </div>
         </div>

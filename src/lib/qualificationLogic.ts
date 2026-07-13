@@ -79,13 +79,11 @@ export function suggestProjectTier(submission: Submission): ProjectTier {
 export function canQualify(
   readiness: ReadinessAssessment,
   qualification: QualificationAssessment,
-  tier: ProjectTier | null,
   rewardCategory: RewardCategory | null,
 ): boolean {
   return (
     scoreReadiness(readiness).allMet &&
     qualifiesAsAI(qualification) &&
-    tier !== null &&
     rewardCategory !== null
   )
 }

@@ -58,7 +58,24 @@ export function ProjectHeaderCard({
             <div className="mb-1 flex flex-wrap items-center gap-2">
               <h1 className="text-[17px] font-semibold text-stone-900">{project.title}</h1>
               <StatusBadge kind="project" status={project.status} />
-              {project.tier && <TierBadge tier={project.tier} />}
+              {project.tier ? (
+                <TierBadge tier={project.tier} />
+              ) : project.status === 'Qualified' ||
+                project.status === 'QualifiedDraft' ||
+                project.status === 'Submitted' ||
+                project.status === 'Rejected' ||
+                project.status === 'ForEHSReview' ||
+                project.status === 'EHSRejected' ||
+                project.status === 'Active' ||
+                project.status === 'ForSponsorApproval' ||
+                project.status === 'Disapproved' ||
+                project.status === 'Completed' ||
+                project.status === 'Idle' ||
+                project.status === 'Deactivated' ? (
+                <span className="rounded-sm border-[0.5px] border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-600">
+                  Not yet assigned
+                </span>
+              ) : null}
               <HealthChip project={project} />
               <span className="rounded-sm bg-[#EEEDFE] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#3C3489]">
                 {humanizeStage(project.currentStage)}

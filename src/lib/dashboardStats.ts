@@ -313,7 +313,9 @@ export function computeDashboardStats(
       ).length
     : 0
 
-  const highRiskProjects = projects.filter((p) => p.tier === 'Tier3').length
+  const highRiskProjects = projects.filter(
+    (p) => p.qualification?.riskTier === 'High',
+  ).length
   const needsAttention = projects.filter(
     (p) =>
       p.status === 'Idle' ||

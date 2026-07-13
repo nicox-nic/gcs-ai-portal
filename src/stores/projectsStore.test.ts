@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_TODAY } from '@/data/seedProjects'
 import { SEED_USERS } from '@/data/seedRoles'
+import { emptyQualification, emptyReadiness } from '@/lib/qualificationCriteria'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { demoNowIso, useDemoClockStore } from '@/stores/demoClockStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
@@ -623,5 +624,52 @@ describe('projectsStore Phase 8 BA gates', () => {
         .getState()
         .advanceStage(project.id, 'SupplierOversight', 'Completed', rc, 'Internal-only'),
     ).not.toThrow()
+  })
+})
+
+describe('projectsStore qualifyProject tier decoupling', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('leaves delivery tier null and stores risk on qualification.riskTier', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Qualify decoupling test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.getState().submitProject(created.id)
+
+    const readiness = emptyReadiness()
+    readiness.feasibility = readiness.feasibility.map(() => true)
+    readiness.viability = readiness.viability.map(() => true)
+    readiness.desirability = readiness.desirability.map(() => true)
+
+    const qualification = emptyQualification()
+    qualification.primary[0] = true
+    qualification.riskTier = 'Medium'
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().qualifyProject(
+      created.id,
+      {
+        readiness,
+        qualification,
+        tierRationale: 'Medium risk — limited personal data',
+        rewardCategory: 'TeamProject',
+      },
+      gov,
+      '',
+    )
+
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === created.id)
+    expect(updated?.status).toBe('Qualified')
+    expect(updated?.tier).toBeNull()
+    expect(updated?.qualification?.riskTier).toBe('Medium')
+    expect(updated?.rewardCategory).toBe('TeamProject')
   })
 })

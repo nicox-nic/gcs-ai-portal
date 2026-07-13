@@ -62,7 +62,6 @@ import type {
   LifecycleStage,
   Project,
   ProjectStatus,
-  ProjectTier,
   QualificationAssessment,
   ReadinessAssessment,
   Recommendation,
@@ -96,7 +95,7 @@ type CreateProjectInput = {
 type QualifyPayload = {
   readiness: ReadinessAssessment
   qualification: QualificationAssessment
-  tier: ProjectTier
+  /** Risk-rationale notes from Section D; delivery tier stays null until DE assigns. */
   tierRationale: string
   rewardCategory: RewardCategory
   businessAnalystId?: string | null
@@ -651,18 +650,19 @@ export const useProjectsStore = create<ProjectsStore>()(
           !canQualify(
             payload.readiness,
             payload.qualification,
-            payload.tier,
             payload.rewardCategory,
           )
         ) {
           throw new Error(
-            'Cannot qualify: readiness must be Met on all dimensions, at least one Section A criterion, plus tier and reward category.',
+            'Cannot qualify: readiness must be Met on all dimensions, at least one Section A criterion, plus reward category.',
           )
+        }
+        if (!payload.qualification.riskTier) {
+          throw new Error('Cannot qualify: Section D risk tier (Low/Medium/High) is required.')
         }
 
         const timestamp = nowIso()
-        const riskFromTier =
-          payload.tier === 'Tier1' ? 'Low' : payload.tier === 'Tier2' ? 'Medium' : 'High'
+        const riskTier = payload.qualification.riskTier
         const transition = appendTransition(project, {
           fromStage: project.currentStage,
           toStage: 'Policy',
@@ -672,7 +672,7 @@ export const useProjectsStore = create<ProjectsStore>()(
           actorRole: actor.role,
           note:
             note ||
-            `Qualified as AI project. Tier ${payload.tier}; reward ${payload.rewardCategory}. ${payload.tierRationale}`.trim(),
+            `Qualified as AI project. Risk ${riskTier}; reward ${payload.rewardCategory}. Delivery tier not yet assigned. ${payload.tierRationale}`.trim(),
           timestamp,
         })
 
@@ -685,9 +685,10 @@ export const useProjectsStore = create<ProjectsStore>()(
                   readiness: structuredClone(payload.readiness),
                   qualification: {
                     ...structuredClone(payload.qualification),
-                    riskTier: payload.qualification.riskTier ?? riskFromTier,
+                    riskTier,
                   },
-                  tier: payload.tier,
+                  // Delivery-ownership tier is assigned later by DE — not at qualification.
+                  tier: null,
                   tierRationale: payload.tierRationale,
                   rewardCategory: payload.rewardCategory,
                   autoTiered: false,
