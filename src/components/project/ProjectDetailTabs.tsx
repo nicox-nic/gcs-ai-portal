@@ -20,7 +20,7 @@ import {
   getDisplayedCombos,
   ToolRankingCard,
 } from '@/components/recommendations/RecommendationSections'
-import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
+import { RequirementsPanel, UatPanel, PmRequirementsGatePanel, PmDevelopmentGatePanel } from '@/components/project/BaDeliveryPanels'
 import { OperationsPanel } from '@/components/project/OperationsPanel'
 import { VerificationPanel } from '@/components/project/VerificationPanel'
 import { VendorSaqPanel } from '@/components/project/VendorSaqPanel'
@@ -53,6 +53,8 @@ import { ROLE_STYLES, getUserInitials } from '@/lib/roleStyles'
 import {
   canCompleteDeployment,
   canCompleteDevelopment,
+  canEnterDeployment,
+  deploymentEntryBlockReason,
   deploymentGateBlockReason,
   developmentGateBlockReason,
 } from '@/lib/baArtifacts'
@@ -167,6 +169,13 @@ function TransitionButtons({
           baGateBlocked = !currentUser || !canCompleteDevelopment(project, currentUser)
           baGateReason = developmentGateBlockReason(project) ??
             (!currentUser ? 'Sign in to complete this stage.' : null)
+        } else if (
+          transition.toStage === 'Deployment' &&
+          (transition.toStatus === 'NotStarted' || transition.toStatus === 'InProgress')
+        ) {
+          baGateBlocked = !currentUser || !canEnterDeployment(project, currentUser)
+          baGateReason = deploymentEntryBlockReason(project) ??
+            (!currentUser ? 'Sign in to advance.' : null)
         } else if (isComplete && stage === 'Deployment') {
           baGateBlocked = !currentUser || !canCompleteDeployment(project, currentUser)
           baGateReason = deploymentGateBlockReason(project) ??
@@ -529,10 +538,18 @@ export function ProjectOverviewTab({
             <VendorSaqPanel project={project} currentUser={currentUser} />
           )}
           {project.currentStage === 'Development' && (
-            <RequirementsPanel project={project} currentUser={currentUser} />
+            <>
+              <RequirementsPanel project={project} currentUser={currentUser} />
+              <PmRequirementsGatePanel project={project} currentUser={currentUser} />
+            </>
           )}
+          {project.currentStage === 'Development' &&
+            project.stageStatus.Development === 'Completed' && (
+              <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
+            )}
           {project.currentStage === 'Deployment' && (
             <>
+              <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
               <UatPanel project={project} currentUser={currentUser} />
               <VerificationPanel project={project} currentUser={currentUser} />
             </>
@@ -704,10 +721,17 @@ export function ProjectLifecycleTab({
               <VendorSaqPanel project={project} currentUser={currentUser} />
             )}
             {isCurrent && meta.stage === 'Development' && (
-              <RequirementsPanel project={project} currentUser={currentUser} />
+              <>
+                <RequirementsPanel project={project} currentUser={currentUser} />
+                <PmRequirementsGatePanel project={project} currentUser={currentUser} />
+                {project.stageStatus.Development === 'Completed' && (
+                  <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
+                )}
+              </>
             )}
             {isCurrent && meta.stage === 'Deployment' && (
               <>
+                <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
                 <UatPanel project={project} currentUser={currentUser} />
                 <VerificationPanel project={project} currentUser={currentUser} />
               </>

@@ -29,6 +29,8 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     verification: null,
     operations: null,
@@ -248,6 +250,15 @@ function opsDriftSuspected(reviewedAt: string) {
   }
 }
 
+function acceptedPmGate() {
+  return {
+    status: 'Accepted' as const,
+    decidedBy: 'usr-pm',
+    decidedAt: daysAgo(5),
+    reason: 'Seed backfill — gate already passed in demo narrative.',
+  }
+}
+
 function assessmentBundle(opts: {
   tier: 'Tier1' | 'Tier2' | 'Tier3'
   risk: 'Low' | 'Medium' | 'High'
@@ -272,6 +283,9 @@ function assessmentBundle(opts: {
     tierRationale: opts.rationale,
     rewardCategory: opts.reward,
     autoTiered: false,
+    // Backfill PM gates so demos past Development/Deployment stay unblocked.
+    pmRequirementsGate: opts.tier === 'Tier2' || opts.tier === 'Tier3' ? acceptedPmGate() : null,
+    pmDevelopmentGate: opts.tier === 'Tier3' ? acceptedPmGate() : null,
   }
 }
 

@@ -70,6 +70,8 @@ function projectAt(status: Project['status'], lastActivityAt: string): Project {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     activeSince: lastActivityAt,
     lastActivityAt,

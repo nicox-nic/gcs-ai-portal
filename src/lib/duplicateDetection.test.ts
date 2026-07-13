@@ -74,6 +74,8 @@ function stubProject(partial: {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     activeSince: null,
     lastActivityAt: new Date().toISOString(),

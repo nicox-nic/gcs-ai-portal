@@ -71,6 +71,8 @@ function baseProject(overrides?: Partial<Project>): Project {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     verification: null,
     operations: null,

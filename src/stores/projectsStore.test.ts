@@ -815,3 +815,141 @@ describe('projectsStore fail-closed delivery tier entry', () => {
     )
   })
 })
+
+describe('projectsStore PM delivery gates', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  it('Gate 1 Reject clears BA confirm; Accept unlocks Development complete for Tier2', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      requirements: {
+        items: [{ id: '1', text: 'Need', priority: 'Must' }],
+        notes: '',
+        confirmedBy: 'usr-ba',
+        confirmedAt: '2026-01-01',
+      },
+      pmRequirementsGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', de, 'Done'),
+    ).toThrow(/Gate 1|PM must Accept/i)
+
+    const pm = userByRole('AIProgramManager')
+    useProjectsStore
+      .getState()
+      .decidePmRequirementsGate(project.id, 'Rejected', 'Missing NFR', pm)
+    const afterReject = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(afterReject?.pmRequirementsGate?.status).toBe('Rejected')
+    expect(afterReject?.requirements?.confirmedBy).toBeNull()
+
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === project.id && p.requirements
+          ? {
+              ...p,
+              requirements: {
+                ...p.requirements,
+                confirmedBy: 'usr-ba',
+                confirmedAt: '2026-01-03',
+              },
+            }
+          : p,
+      ),
+    }))
+    useProjectsStore.getState().decidePmRequirementsGate(project.id, 'Accepted', '', pm)
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', de, 'Done'),
+    ).not.toThrow()
+  })
+
+  it('Tier3 Gate 2 Reject returns Development to InProgress; Accept allows advance', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier3',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      pmRequirementsGate: {
+        status: 'Accepted',
+        decidedBy: 'usr-pm',
+        decidedAt: '2026-01-01',
+        reason: '',
+      },
+      pmDevelopmentGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+      businessAnalystId: 'usr-ba',
+      requirements: {
+        items: [{ id: '1', text: 'Need', priority: 'Must' }],
+        notes: '',
+        confirmedBy: 'usr-ba',
+        confirmedAt: '2026-01-01',
+      },
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Deployment', 'NotStarted', de, 'Advance'),
+    ).toThrow(/Gate 2/i)
+
+    const pm = userByRole('AIProgramManager')
+    useProjectsStore
+      .getState()
+      .decidePmDevelopmentGate(project.id, 'Rejected', 'Rework model', pm)
+    const rejected = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(rejected?.stageStatus.Development).toBe('InProgress')
+    expect(rejected?.pmDevelopmentGate?.status).toBe('Rejected')
+
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === project.id
+          ? {
+              ...p,
+              stageStatus: { ...p.stageStatus, Development: 'Completed' },
+              pmDevelopmentGate: {
+                status: 'Pending',
+                decidedBy: null,
+                decidedAt: null,
+                reason: '',
+              },
+            }
+          : p,
+      ),
+    }))
+    useProjectsStore.getState().decidePmDevelopmentGate(project.id, 'Accepted', '', pm)
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Deployment', 'NotStarted', de, 'Advance'),
+    ).not.toThrow()
+  })
+})

@@ -18,13 +18,19 @@ import {
   canAssignBusinessAnalyst,
   canCompleteDeployment,
   canCompleteDevelopment,
+  canDecidePmGate,
   canEditRequirements,
   canEditUat,
+  canEnterDeployment,
+  deploymentEntryBlockReason,
   deploymentGateBlockReason,
   developmentGateBlockReason,
+  emptyPmGate,
   emptyRequirements,
   emptyUat,
   isBaGateMandatory,
+  isPmDevelopmentGateMandatory,
+  isPmRequirementsGateMandatory,
   uatPassed,
 } from '@/lib/baArtifacts'
 import {
@@ -222,6 +228,20 @@ type ProjectsStore = {
     actor: User,
   ) => void
   confirmRequirements: (projectId: string, actor: User) => void
+  /** Gate 1 — PM Accept/Reject of requirements (Tier2/Tier3). */
+  decidePmRequirementsGate: (
+    projectId: string,
+    decision: 'Accepted' | 'Rejected',
+    reason: string,
+    actor: User,
+  ) => void
+  /** Gate 2 — PM Accept/Reject after Development (Tier3). */
+  decidePmDevelopmentGate: (
+    projectId: string,
+    decision: 'Accepted' | 'Rejected',
+    reason: string,
+    actor: User,
+  ) => void
   saveUat: (projectId: string, artifact: UatArtifact, actor: User) => void
   signOffUat: (projectId: string, actor: User) => void
   saveVerification: (
@@ -379,6 +399,8 @@ function emptyV3Fields(timestamp: string) {
     qualification: null as Project['qualification'],
     readiness: null as Project['readiness'],
     requirements: null as Project['requirements'],
+    pmRequirementsGate: null as Project['pmRequirementsGate'],
+    pmDevelopmentGate: null as Project['pmDevelopmentGate'],
     uat: null as Project['uat'],
     verification: null as Project['verification'],
     operations: null as Project['operations'],
@@ -550,6 +572,30 @@ export const useProjectsStore = create<ProjectsStore>()(
         }
 
         if (
+          currentStage === 'Development' &&
+          toStage === 'Deployment' &&
+          !canEnterDeployment(project, actor)
+        ) {
+          throw new Error(
+            deploymentEntryBlockReason(project) ??
+              'PM Gate 2 must be Accepted before Deployment can begin.',
+          )
+        }
+
+        if (
+          currentStage === 'Deployment' &&
+          project.stageStatus.Development === 'Completed' &&
+          toStage === 'Deployment' &&
+          toStatus === 'InProgress' &&
+          !canEnterDeployment(project, actor)
+        ) {
+          throw new Error(
+            deploymentEntryBlockReason(project) ??
+              'PM Gate 2 must be Accepted before Deployment can begin.',
+          )
+        }
+
+        if (
           currentStage === 'Deployment' &&
           toStage === 'Deployment' &&
           toStatus === 'Completed' &&
@@ -597,13 +643,33 @@ export const useProjectsStore = create<ProjectsStore>()(
             })
             const sideEffects = applyStatusSideEffects(p, toStage, toStatus)
 
-            const next: Project = {
+            let next: Project = {
               ...p,
               currentStage: toStage,
               stageStatus: { ...p.stageStatus, [toStage]: toStatus },
               ...sideEffects,
               auditLog: [...p.auditLog, transition],
               updatedAt: timestamp,
+            }
+
+            // Open Gate 1 when entering Development (Tier2/3)
+            if (
+              toStage === 'Development' &&
+              fromStage !== 'Development' &&
+              isPmRequirementsGateMandatory(next) &&
+              !next.pmRequirementsGate
+            ) {
+              next = { ...next, pmRequirementsGate: emptyPmGate() }
+            }
+
+            // Open Gate 2 when Development completes (Tier3)
+            if (
+              toStage === 'Development' &&
+              toStatus === 'Completed' &&
+              isPmDevelopmentGateMandatory(next) &&
+              next.pmDevelopmentGate?.status !== 'Accepted'
+            ) {
+              next = { ...next, pmDevelopmentGate: emptyPmGate() }
             }
 
             // Entering Development / Deployment with an assigned BA → request artifacts
@@ -1963,6 +2029,125 @@ export const useProjectsStore = create<ProjectsStore>()(
         }))
         const updated = get().projects.find((p) => p.id === projectId)
         if (updated) notify(updated, 'requirements-confirmed', actor)
+      },
+
+      decidePmRequirementsGate: (projectId, decision, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canDecidePmGate(actor)) {
+          throw new Error(
+            `Only ${humanizeRole('AIProgramManager')} or Admin can decide PM requirements Gate 1.`,
+          )
+        }
+        if (!isPmRequirementsGateMandatory(project)) {
+          throw new Error('PM requirements Gate 1 applies to Tier2 and Tier3 only.')
+        }
+        if (decision === 'Rejected' && !reason.trim()) {
+          throw new Error('A rejection reason is required.')
+        }
+
+        const timestamp = nowIso()
+        const gate = {
+          status: decision,
+          decidedBy: actor.id,
+          decidedAt: timestamp,
+          reason: reason.trim(),
+        }
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note:
+            decision === 'Accepted'
+              ? 'PM Gate 1 Accepted — requirements approved.'
+              : `PM Gate 1 Rejected — requirements returned for revise: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== projectId) return p
+            const requirements =
+              decision === 'Rejected' && p.requirements
+                ? {
+                    ...p.requirements,
+                    confirmedBy: null,
+                    confirmedAt: null,
+                  }
+                : p.requirements
+            return {
+              ...p,
+              pmRequirementsGate: gate,
+              requirements,
+              auditLog: [...p.auditLog, transition],
+              updatedAt: timestamp,
+              lastActivityAt: timestamp,
+            }
+          }),
+        }))
+      },
+
+      decidePmDevelopmentGate: (projectId, decision, reason, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!canDecidePmGate(actor)) {
+          throw new Error(
+            `Only ${humanizeRole('AIProgramManager')} or Admin can decide PM development Gate 2.`,
+          )
+        }
+        if (!isPmDevelopmentGateMandatory(project)) {
+          throw new Error('PM development Gate 2 applies to Tier3 only.')
+        }
+        if (decision === 'Rejected' && !reason.trim()) {
+          throw new Error('A rejection reason is required.')
+        }
+
+        const timestamp = nowIso()
+        const gate = {
+          status: decision,
+          decidedBy: actor.id,
+          decidedAt: timestamp,
+          reason: reason.trim(),
+        }
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note:
+            decision === 'Accepted'
+              ? 'PM Gate 2 Accepted — development approved to proceed to Deployment.'
+              : `PM Gate 2 Rejected — returned to Development revise: ${reason.trim()}`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) => {
+            if (p.id !== projectId) return p
+            const stageStatus =
+              decision === 'Rejected' && p.stageStatus.Development === 'Completed'
+                ? { ...p.stageStatus, Development: 'InProgress' as const }
+                : p.stageStatus
+            const currentStage =
+              decision === 'Rejected' && p.currentStage === 'Deployment'
+                ? ('Development' as const)
+                : p.currentStage
+            return {
+              ...p,
+              pmDevelopmentGate: gate,
+              stageStatus,
+              currentStage,
+              auditLog: [...p.auditLog, transition],
+              updatedAt: timestamp,
+              lastActivityAt: timestamp,
+            }
+          }),
+        }))
       },
 
       saveUat: (projectId, artifact, actor) => {
