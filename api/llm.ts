@@ -18,7 +18,8 @@ interface LlmRequestBody {
 // the key is configured, WITHOUT calling OpenAI or revealing the key value.
 export function GET(_request: Request) {
   const keyConfigured = Boolean(process.env.OPENAI_API_KEY)
-  return new Response(JSON.stringify({ ok: true, keyConfigured }), {
+  const modelConfigured = Boolean(process.env.OPENAI_MODEL?.replace(/^["']|["']$/g, '').trim())
+  return new Response(JSON.stringify({ ok: true, keyConfigured, modelConfigured }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   })
@@ -51,7 +52,9 @@ export async function POST(request: Request) {
     })
   }
 
-  const model = body.model ?? process.env.OPENAI_MODEL
+  const rawModel = body.model ?? process.env.OPENAI_MODEL
+  // Strip accidental quotes from env values like OPENAI_MODEL="gpt-4o-mini"
+  const model = rawModel?.replace(/^["']|["']$/g, '').trim()
   if (!model) {
     return new Response(
       JSON.stringify({
@@ -72,7 +75,8 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model,
         messages: body.messages,
-        max_tokens: body.max_tokens ?? 1000,
+        // Newer OpenAI models reject max_tokens; max_completion_tokens works for both.
+        max_completion_tokens: body.max_tokens ?? 1000,
         ...(body.temperature !== undefined ? { temperature: body.temperature } : {}),
       }),
     })
