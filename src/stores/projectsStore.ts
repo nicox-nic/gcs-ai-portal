@@ -56,12 +56,14 @@ import { canOwnStack, formatProjectReviewNote } from '@/lib/tiering'
 import { humanizeRole } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { demoNowIso, getDemoNow } from '@/stores/demoClockStore'
+import { DELIVERY_TIER_ASSIGN_ROLES } from '@/lib/roles'
 import type {
   AgingMilestone,
   Group,
   LifecycleStage,
   Project,
   ProjectStatus,
+  ProjectTier,
   QualificationAssessment,
   ReadinessAssessment,
   Recommendation,
@@ -154,6 +156,8 @@ type ProjectsStore = {
   rejectQualification: (projectId: string, reason: string, actor: User) => void
   resubmitForAssessment: (projectId: string, actor: User) => void
   cancelProject: (projectId: string, reason: string, actor: User) => void
+  /** Assign delivery-ownership tier while Qualified / QualifiedDraft (pre-Submitted). */
+  assignDeliveryTier: (projectId: string, tier: ProjectTier, actor: User) => void
   submitForReview: (projectId: string, actor: User) => void
   saveQualifiedDraft: (projectId: string, actor: User) => void
   assignEhsCoordinator: (projectId: string, ehsUserId: string | null, actor: User) => void
@@ -852,9 +856,59 @@ export const useProjectsStore = create<ProjectsStore>()(
         if (updated) notify(updated, 'cancelled', actor)
       },
 
+      assignDeliveryTier: (projectId, tier, actor) => {
+        const project = get().projects.find((p) => p.id === projectId)
+        if (!project) throw new Error(`Project not found: ${projectId}`)
+        assertRole(
+          actor,
+          DELIVERY_TIER_ASSIGN_ROLES,
+          `Only ${humanizeRole('DataEngineering')}, ${humanizeRole('GovernanceLead')}, or Admin can assign a delivery tier.`,
+        )
+        if (project.status !== 'Qualified' && project.status !== 'QualifiedDraft') {
+          throw new Error(
+            'Delivery tier can only be assigned while the project is Qualified (pre-development). It is locked once development has begun.',
+          )
+        }
+        if (tier !== 'Tier1' && tier !== 'Tier2' && tier !== 'Tier3') {
+          throw new Error('Delivery tier must be Tier1, Tier2, or Tier3.')
+        }
+
+        const timestamp = nowIso()
+        const transition = appendTransition(project, {
+          fromStage: project.currentStage,
+          toStage: project.currentStage,
+          fromStatus: project.stageStatus[project.currentStage],
+          toStatus: project.stageStatus[project.currentStage],
+          actorUserId: actor.id,
+          actorRole: actor.role,
+          note: `Delivery tier assigned: ${tier}${project.tier ? ` (was ${project.tier})` : ''}.`,
+          timestamp,
+        })
+
+        set((state) => ({
+          projects: state.projects.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  tier,
+                  autoTiered: false,
+                  auditLog: [...p.auditLog, transition],
+                  updatedAt: timestamp,
+                  lastActivityAt: timestamp,
+                }
+              : p,
+          ),
+        }))
+      },
+
       submitForReview: (projectId, actor) => {
         const project = get().projects.find((p) => p.id === projectId)
         if (!project) throw new Error(`Project not found: ${projectId}`)
+        if (!project.tier) {
+          throw new Error(
+            'Assign a delivery tier before this project can proceed.',
+          )
+        }
         if (!canOwnStack(project, actor)) {
           throw new Error(
             'Your role cannot submit the tool stack for review on this project tier.',

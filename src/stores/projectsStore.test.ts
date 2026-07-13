@@ -703,3 +703,69 @@ describe('projectsStore cancelProject notification', () => {
     expect(cancelled?.to).toContain('usr-submitter')
   })
 })
+
+describe('projectsStore assignDeliveryTier', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  function makeQualifiedForTier(): string {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Tier assign test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Qualified' as const,
+              currentStage: 'Policy' as const,
+              stageStatus: { ...p.stageStatus, Assessment: 'Completed', Policy: 'NotStarted' },
+              tier: null,
+            }
+          : p,
+      ),
+    }))
+    return created.id
+  }
+
+  it('sets project.tier for DE, Admin, and GovernanceLead', () => {
+    const id = makeQualifiedForTier()
+    const de = userByRole('DataEngineering')
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier2', de)
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier2')
+
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('GovernanceLead'))
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier1')
+
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier3', userByRole('Admin'))
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier3')
+  })
+
+  it('blocks non-assigner roles', () => {
+    const id = makeQualifiedForTier()
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('Submitter')),
+    ).toThrow(/Data Engineering|Governance Lead|Admin/i)
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('BusinessAnalyst')),
+    ).toThrow()
+  })
+
+  it('blocks assignment once past Qualified / QualifiedDraft', () => {
+    const id = makeQualifiedForTier()
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === id ? { ...p, status: 'Submitted' as const, tier: 'Tier1' as const } : p,
+      ),
+    }))
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier2', userByRole('DataEngineering')),
+    ).toThrow(/locked|pre-development|Qualified/i)
+  })
+})
