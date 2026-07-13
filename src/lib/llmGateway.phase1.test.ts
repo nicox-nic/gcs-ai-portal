@@ -20,7 +20,10 @@ function env(overrides: Record<string, string | undefined> = {}): NodeJS.Process
 function postJson(body: unknown): Request {
   return new Request('http://localhost/api/llm', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost',
+    },
     body: JSON.stringify(body),
   })
 }

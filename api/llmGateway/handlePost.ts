@@ -1,6 +1,8 @@
 import { isBodyWithinLimit, MAX_BODY_BYTES } from './limits'
 import { isRegisteredOperation, OPERATION_REGISTRY } from './operations'
+import { isAllowedOrigin, PROVIDER_TIMEOUT_MS } from './origin'
 import { isGatewayEnabled, resolveProvider } from './provider'
+import { checkRateLimit, clientIpFromRequest } from './rateLimit'
 import type { DraftAssistInput, LlmOperationId } from './types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -34,7 +36,8 @@ export function methodNotAllowed(): Response {
 }
 
 /**
- * Operation allowlist + kill-switch + provider seam + request limits.
+ * Operation allowlist + kill-switch + provider seam + request limits +
+ * IP rate limit + origin check + upstream timeout.
  * Rejects the legacy generic messages[] proxy contract.
  * Client max_tokens / temperature / model are ignored — server sets ceilings.
  */
@@ -44,6 +47,20 @@ export async function handleLlmPost(
 ): Promise<Response> {
   if (!isGatewayEnabled(env)) {
     return jsonResponse(503, { error: 'LLM gateway is disabled.' })
+  }
+
+  if (!isAllowedOrigin(request, env)) {
+    return jsonResponse(403, { error: 'Origin not allowed.' })
+  }
+
+  const ip = clientIpFromRequest(request)
+  const rate = checkRateLimit(ip)
+  if (!rate.allowed) {
+    return jsonResponse(
+      429,
+      { error: 'Rate limit exceeded.' },
+      { 'Retry-After': String(rate.retryAfterSec) },
+    )
   }
 
   let rawText: string
@@ -96,15 +113,24 @@ export async function handleLlmPost(
 
   // Token ceiling is owned by the operation definition — never from the client body.
   const messages = definition.buildMessages(draftAssistInput)
-  const result = await provider.complete(messages, {
-    maxCompletionTokens: definition.maxCompletionTokens,
-    temperature: definition.temperature,
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS)
+  let result
+  try {
+    result = await provider.complete(messages, {
+      maxCompletionTokens: definition.maxCompletionTokens,
+      temperature: definition.temperature,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!result.ok) {
-    return jsonResponse(result.status >= 400 ? result.status : 502, {
-      error: 'LLM request failed.',
-      status: result.status,
+    const status = result.timedOut ? 504 : result.status >= 400 ? result.status : 502
+    return jsonResponse(status, {
+      error: result.timedOut ? 'LLM provider timed out.' : 'LLM request failed.',
+      status,
     })
   }
 

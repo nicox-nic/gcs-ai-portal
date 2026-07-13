@@ -21,7 +21,10 @@ function env(overrides: Record<string, string | undefined> = {}): NodeJS.Process
 function postRaw(raw: string): Request {
   return new Request('http://localhost/api/llm', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: 'http://localhost',
+    },
     body: raw,
   })
 }
