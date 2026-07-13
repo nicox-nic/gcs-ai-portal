@@ -47,7 +47,7 @@ export type ProjectStatus =
   | 'Idle'
   | 'Deactivated'
 
-/** 1:1 with RiskLevel: Tier1=Low, Tier2=Medium, Tier3=High */
+/** Delivery-ownership tier (Tier1/2/3), assigned by DE post-qualification; independent of risk. */
 export type ProjectTier = 'Tier1' | 'Tier2' | 'Tier3'
 
 export type RewardCategory = 'Kaizen' | 'TeamProject' | 'ManagementInitiative' | 'Innovation'
@@ -192,6 +192,16 @@ export interface RequirementsArtifact {
   confirmedAt: string | null
 }
 
+/** PM Accept/Reject checkpoint (delivery gates — separate from UAT/verification). */
+export type PmGateStatus = 'Pending' | 'Accepted' | 'Rejected'
+
+export interface PmGateDecision {
+  status: PmGateStatus
+  decidedBy: string | null
+  decidedAt: string | null
+  reason: string
+}
+
 export type UatResult = 'Pass' | 'Fail' | 'Untested'
 
 export interface UatCase {
@@ -307,6 +317,15 @@ export interface Project {
   readiness: ReadinessAssessment | null
   /** BA requirements artifact — null until started. */
   requirements: RequirementsArtifact | null
+  /**
+   * Gate 1 (Tier2+Tier3): PM Accept/Reject of elicited requirements.
+   * Null when not applicable (Tier1) or not yet opened.
+   */
+  pmRequirementsGate: PmGateDecision | null
+  /**
+   * Gate 2 (Tier3 only): PM Accept/Reject after Development completes, before Deployment.
+   */
+  pmDevelopmentGate: PmGateDecision | null
   /** BA UAT artifact — null until started. */
   uat: UatArtifact | null
   /** DE tool & model verification — null until Deployment work begins. */
@@ -331,6 +350,7 @@ export type NotificationKind =
   | 'submitted-for-assessment'
   | 'qualified'
   | 'not-qualified'
+  | 'cancelled'
   | 'submitted-for-review'
   | 'approved'
   | 'rejected'

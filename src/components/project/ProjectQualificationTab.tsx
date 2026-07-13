@@ -26,19 +26,12 @@ import {
   emptyQualification,
   emptyReadiness,
 } from '@/lib/qualificationCriteria'
-import {
-  canQualify,
-  qualifiesAsAI,
-  scoreReadiness,
-  suggestTier,
-} from '@/lib/qualificationLogic'
-import { RISK_BY_TIER, TIER_BY_RISK } from '@/lib/projectStatus'
+import { canQualify, qualifiesAsAI, scoreReadiness, suggestTier } from '@/lib/qualificationLogic'
 import { formatDateTime, humanizeRole, cn } from '@/lib/utils'
 import { getUserDisplayName } from '@/lib/projectDisplay'
 import { SEED_USERS } from '@/data/seedRoles'
 import type {
   Project,
-  ProjectTier,
   QualificationAssessment,
   ReadinessAssessment,
   RewardCategory,
@@ -73,7 +66,6 @@ type ProjectQualificationTabProps = {
   onQualify: (payload: {
     readiness: ReadinessAssessment
     qualification: QualificationAssessment
-    tier: ProjectTier
     tierRationale: string
     rewardCategory: RewardCategory
     businessAnalystId?: string | null
@@ -222,11 +214,15 @@ function ReadOnlySummary({ project }: { project: Project }) {
 
       <dl className="grid gap-3 sm:grid-cols-2 text-xs">
         <div>
-          <dt className="text-stone-500">Assigned tier</dt>
+          <dt className="text-stone-500">Risk classification (Section D)</dt>
           <dd className="mt-0.5 font-medium text-stone-900">
-            {project.tier
-              ? `${project.tier} (${RISK_BY_TIER[project.tier]})`
-              : '—'}
+            {qualification?.riskTier ?? '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-stone-500">Delivery tier</dt>
+          <dd className="mt-0.5 font-medium text-stone-900">
+            {project.tier ?? 'Not yet assigned'}
           </dd>
           {project.tierRationale && (
             <dd className="mt-1 text-stone-600">{project.tierRationale}</dd>
@@ -283,10 +279,7 @@ export function ProjectQualificationTab({
         riskTier: suggestedRisk,
       },
   )
-  const [tier, setTier] = useState<ProjectTier | null>(
-    () => project.tier ?? TIER_BY_RISK[suggestedRisk],
-  )
-  const [tierRationale, setTierRationale] = useState(project.tierRationale || '')
+  const [riskRationale, setRiskRationale] = useState(project.tierRationale || '')
   const [rewardCategory, setRewardCategory] = useState<RewardCategory | null>(
     project.rewardCategory,
   )
@@ -301,7 +294,7 @@ export function ProjectQualificationTab({
   const pmUsers = SEED_USERS.filter((user) => user.role === 'AIProgramManager')
   const scores = scoreReadiness(readiness)
   const isAi = qualifiesAsAI(qualification)
-  const qualifyEnabled = canQualify(readiness, qualification, tier, rewardCategory)
+  const qualifyEnabled = canQualify(readiness, qualification, rewardCategory)
 
   if (project.status !== 'ForAssessment' && (project.readiness || project.qualification || project.tier)) {
     return <ReadOnlySummary project={project} />
@@ -387,7 +380,6 @@ export function ProjectQualificationTab({
 
   const setRisk = (risk: RiskLevel) => {
     setQualification((previous) => ({ ...previous, riskTier: risk }))
-    setTier(TIER_BY_RISK[risk])
   }
 
   return (
@@ -395,8 +387,8 @@ export function ProjectQualificationTab({
       <div>
         <h3 className="text-sm font-medium text-stone-900">Governance qualification</h3>
         <p className="mt-1 text-xs text-stone-500">
-          Complete AI Readiness and Qualification checklists, assign risk tier and reward category,
-          then decide.
+          Complete AI Readiness and Qualification checklists, assign risk classification and reward
+          category, then decide. Delivery tier is assigned later by Data Engineering.
         </p>
       </div>
 
@@ -416,7 +408,7 @@ export function ProjectQualificationTab({
                   : 'bg-stone-100 text-stone-600',
               )}
             >
-              {scores.allMet ? 'All dimensions met' : 'Not ready to qualify'}
+              {scores.allMet ? 'All dimensions met' : 'Informational — does not block Qualify'}
             </span>
           </div>
         </div>
@@ -479,15 +471,14 @@ export function ProjectQualificationTab({
       </section>
 
       <section className="rounded-lg border-[0.5px] border-stone-200 bg-white p-4">
-        <h4 className="mb-2 text-xs font-semibold text-stone-900">Section D — Risk tier</h4>
+        <h4 className="mb-2 text-xs font-semibold text-stone-900">Section D — Risk classification</h4>
         <p className="mb-3 text-[11px] text-stone-500">
           Suggested from submission:{' '}
           <span className="font-medium text-stone-800">{suggestedRisk}</span> (hint only —
-          Governance may override).
+          Governance may override). Delivery ownership (Tier1/2/3) is not set here.
         </p>
         <div className="space-y-2">
           {RISK_TIER_OPTIONS.map((option) => {
-            const optionTier = TIER_BY_RISK[option.risk]
             const selected = qualification.riskTier === option.risk
             return (
               <label
@@ -507,9 +498,7 @@ export function ProjectQualificationTab({
                   onChange={() => setRisk(option.risk)}
                 />
                 <span>
-                  <span className="font-medium text-stone-900">
-                    {option.risk} → {optionTier}
-                  </span>
+                  <span className="font-medium text-stone-900">{option.risk}</span>
                   <span className="mt-0.5 block text-stone-600">{option.triggers}</span>
                   <span className="mt-0.5 block text-stone-500">
                     Controls: {option.controls}
@@ -520,12 +509,12 @@ export function ProjectQualificationTab({
           })}
         </div>
         <div className="mt-3">
-          <Label className="mb-1.5 text-[11px] text-stone-700">Tier rationale</Label>
+          <Label className="mb-1.5 text-[11px] text-stone-700">Risk rationale</Label>
           <Textarea
-            value={tierRationale}
-            onChange={(event) => setTierRationale(event.target.value)}
+            value={riskRationale}
+            onChange={(event) => setRiskRationale(event.target.value)}
             className="min-h-16 text-xs"
-            placeholder="Why this risk tier fits the use case"
+            placeholder="Why this risk classification fits the use case"
           />
         </div>
         <div className="mt-3">
@@ -652,22 +641,26 @@ export function ProjectQualificationTab({
         title="Qualify this project?"
         description={
           <>
-            Marks the project as Qualified, stores the assessment, assigns {tier}, and advances
-            Assessment to complete / Policy Not Started.
+            Marks the project as Qualified, stores the assessment (risk{' '}
+            {qualification.riskTier ?? '—'}), and advances Assessment to complete / Policy Not
+            Started. Delivery tier remains unassigned until Data Engineering sets it.
           </>
         }
         confirmLabel="Qualify"
         onConfirm={() => {
-          if (!tier || !rewardCategory) {
-            toast.error('Tier and reward category are required.')
+          if (!rewardCategory) {
+            toast.error('Reward category is required.')
+            return false
+          }
+          if (!qualification.riskTier) {
+            toast.error('Section D risk classification is required.')
             return false
           }
           try {
             onQualify({
               readiness,
               qualification,
-              tier,
-              tierRationale,
+              tierRationale: riskRationale,
               rewardCategory,
               businessAnalystId: baPick === '__none__' ? null : baPick,
               dataEngineerId: dePick === '__none__' ? null : dePick,

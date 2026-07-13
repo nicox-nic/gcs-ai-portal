@@ -52,9 +52,9 @@ describe('computeDashboardStats (V3 Phase 7)', () => {
     expect(row?.numerator).toBe(expected)
   })
 
-  it('counts Tier3 as highRiskProjects and Idle/Blocked as needsAttention', () => {
+  it('counts High riskTier as highRiskProjects and Idle/Blocked as needsAttention', () => {
     expect(stats.highRiskProjects).toBe(
-      SEED_PROJECTS.filter((p) => p.tier === 'Tier3').length,
+      SEED_PROJECTS.filter((p) => p.qualification?.riskTier === 'High').length,
     )
     expect(stats.needsAttention).toBe(
       SEED_PROJECTS.filter(

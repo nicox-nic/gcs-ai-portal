@@ -29,6 +29,8 @@ function v3Defaults(updatedAt: string, opts?: { activeSince?: string | null }) {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     verification: null,
     operations: null,
@@ -248,6 +250,15 @@ function opsDriftSuspected(reviewedAt: string) {
   }
 }
 
+function acceptedPmGate() {
+  return {
+    status: 'Accepted' as const,
+    decidedBy: 'usr-pm',
+    decidedAt: daysAgo(5),
+    reason: 'Seed backfill — gate already passed in demo narrative.',
+  }
+}
+
 function assessmentBundle(opts: {
   tier: 'Tier1' | 'Tier2' | 'Tier3'
   risk: 'Low' | 'Medium' | 'High'
@@ -272,6 +283,9 @@ function assessmentBundle(opts: {
     tierRationale: opts.rationale,
     rewardCategory: opts.reward,
     autoTiered: false,
+    // Backfill PM gates so demos past Development/Deployment stay unblocked.
+    pmRequirementsGate: opts.tier === 'Tier2' || opts.tier === 'Tier3' ? acceptedPmGate() : null,
+    pmDevelopmentGate: opts.tier === 'Tier3' ? acceptedPmGate() : null,
   }
 }
 
@@ -1718,7 +1732,7 @@ export const SEED_PROJECTS: Project[] = [
           actorUserId: 'usr-govlead',
           actorRole: 'GovernanceLead',
           timestamp: daysAgo(2),
-          note: 'Qualified as AI project. Tier Tier1; reward Kaizen. Low-risk internal summarisation.',
+          note: 'Qualified as AI project. Risk Low; reward Kaizen. Delivery tier not yet assigned. Low-risk internal summarisation.',
         },
         2,
       ),
@@ -1732,6 +1746,8 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal meeting summarisation with no customer data.',
       primaryTrue: 2,
     }),
+    // Pre-DE delivery-tier assignment — Qualified but Assessment delivery step not done.
+    tier: null,
     businessAnalystId: 'usr-ba',
     dataEngineerId: null,
     programManagerId: 'usr-pm',
@@ -2542,7 +2558,7 @@ export const SEED_PROJECTS: Project[] = [
           actorUserId: 'usr-govlead',
           actorRole: 'GovernanceLead',
           timestamp: daysAgo(5),
-          note: 'Qualified as AI project. Tier Tier1; reward Kaizen.',
+          note: 'Qualified as AI project. Risk Low; reward Kaizen. Delivery tier not yet assigned.',
         },
         2,
       ),
@@ -2570,6 +2586,8 @@ export const SEED_PROJECTS: Project[] = [
       rationale: 'Internal dispatch briefing; no customer decisions.',
       primaryTrue: 2,
     }),
+    // Pre-DE delivery-tier assignment — QualifiedDraft awaiting DE tier.
+    tier: null,
     sponsorValidated: false,
   },
   {

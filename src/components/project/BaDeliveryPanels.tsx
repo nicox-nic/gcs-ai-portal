@@ -14,11 +14,14 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
+  canDecidePmGate,
   canEditRequirements,
   canEditUat,
   emptyRequirements,
   emptyUat,
   isBaGateMandatory,
+  isPmDevelopmentGateMandatory,
+  isPmRequirementsGateMandatory,
   requirementsComplete,
   uatPassed,
 } from '@/lib/baArtifacts'
@@ -280,6 +283,147 @@ export function RequirementsPanel({ project, currentUser }: PanelProps) {
           {project.requirements?.notes && (
             <p className="pt-1 text-stone-500">Notes: {project.requirements.notes}</p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function PmRequirementsGatePanel({ project, currentUser }: PanelProps) {
+  const decide = useProjectsStore((s) => s.decidePmRequirementsGate)
+  const mandatory = isPmRequirementsGateMandatory(project)
+  if (!mandatory) return null
+
+  const canDecide = canDecidePmGate(currentUser)
+  const gate = project.pmRequirementsGate
+  const [reason, setReason] = useState('')
+
+  const handle = (decision: 'Accepted' | 'Rejected') => {
+    if (!currentUser) return
+    try {
+      decide(project.id, decision, reason, currentUser)
+      toast.success(decision === 'Accepted' ? 'Gate 1 Accepted.' : 'Gate 1 Rejected — revise requirements.')
+      setReason('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not record Gate 1 decision.')
+    }
+  }
+
+  return (
+    <div className="mb-3 rounded-md border-[0.5px] border-indigo-200 bg-indigo-50/40 p-3">
+      <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+        <ClipboardCheck className="h-3.5 w-3.5 text-indigo-700" />
+        PM Gate 1 — Requirements acceptance (Tier2/Tier3)
+      </div>
+      <p className="mb-2 text-[10px] text-stone-600">
+        Separate from UAT/verification. Program Manager (or Admin) Accept to unlock Development
+        complete; Reject returns requirements for revise.
+      </p>
+      <p className="mb-2 text-[11px] text-stone-700">
+        Status:{' '}
+        <strong>{gate?.status ?? 'Pending'}</strong>
+        {gate?.decidedBy ? ` · ${getUserDisplayName(gate.decidedBy)}` : ''}
+        {gate?.reason ? ` — ${gate.reason}` : ''}
+      </p>
+      {canDecide && gate?.status !== 'Accepted' && (
+        <div className="space-y-2">
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="min-h-[48px] text-xs"
+            placeholder="Reason (required for Reject)"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+              disabled={!requirementsComplete(project)}
+              onClick={() => handle('Accepted')}
+            >
+              Accept
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-8 text-xs"
+              onClick={() => handle('Rejected')}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function PmDevelopmentGatePanel({ project, currentUser }: PanelProps) {
+  const decide = useProjectsStore((s) => s.decidePmDevelopmentGate)
+  const mandatory = isPmDevelopmentGateMandatory(project)
+  if (!mandatory) return null
+
+  const developmentDone = project.stageStatus.Development === 'Completed'
+  const hasDecision = Boolean(project.pmDevelopmentGate)
+  if (!developmentDone && !hasDecision) return null
+
+  const canDecide = canDecidePmGate(currentUser)
+  const gate = project.pmDevelopmentGate
+  const [reason, setReason] = useState('')
+
+  const handle = (decision: 'Accepted' | 'Rejected') => {
+    if (!currentUser) return
+    try {
+      decide(project.id, decision, reason, currentUser)
+      toast.success(
+        decision === 'Accepted'
+          ? 'Gate 2 Accepted — Deployment may proceed.'
+          : 'Gate 2 Rejected — returned to Development.',
+      )
+      setReason('')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not record Gate 2 decision.')
+    }
+  }
+
+  return (
+    <div className="mb-3 rounded-md border-[0.5px] border-amber-200 bg-amber-50/50 p-3">
+      <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+        <ClipboardCheck className="h-3.5 w-3.5 text-amber-700" />
+        PM Gate 2 — Post-Development acceptance (Tier3)
+      </div>
+      <p className="mb-2 text-[10px] text-stone-600">
+        Required before Deployment. Reject returns Development to In Progress for revise.
+      </p>
+      <p className="mb-2 text-[11px] text-stone-700">
+        Status: <strong>{gate?.status ?? 'Pending'}</strong>
+        {gate?.decidedBy ? ` · ${getUserDisplayName(gate.decidedBy)}` : ''}
+        {gate?.reason ? ` — ${gate.reason}` : ''}
+      </p>
+      {canDecide && gate?.status !== 'Accepted' && developmentDone && (
+        <div className="space-y-2">
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="min-h-[48px] text-xs"
+            placeholder="Reason (required for Reject)"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+              onClick={() => handle('Accepted')}
+            >
+              Accept
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-8 text-xs"
+              onClick={() => handle('Rejected')}
+            >
+              Reject
+            </Button>
+          </div>
         </div>
       )}
     </div>

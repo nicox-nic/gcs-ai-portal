@@ -20,7 +20,7 @@ import {
   getDisplayedCombos,
   ToolRankingCard,
 } from '@/components/recommendations/RecommendationSections'
-import { RequirementsPanel, UatPanel } from '@/components/project/BaDeliveryPanels'
+import { RequirementsPanel, UatPanel, PmRequirementsGatePanel, PmDevelopmentGatePanel } from '@/components/project/BaDeliveryPanels'
 import { OperationsPanel } from '@/components/project/OperationsPanel'
 import { VerificationPanel } from '@/components/project/VerificationPanel'
 import { VendorSaqPanel } from '@/components/project/VendorSaqPanel'
@@ -42,10 +42,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ROLE_STYLES, getUserInitials } from '@/lib/roleStyles'
 import {
   canCompleteDeployment,
   canCompleteDevelopment,
+  canEnterDeployment,
+  deploymentEntryBlockReason,
   deploymentGateBlockReason,
   developmentGateBlockReason,
 } from '@/lib/baArtifacts'
@@ -68,6 +77,7 @@ import {
   recentAuditEntries,
   shortActorName,
 } from '@/lib/projectDisplay'
+import { DELIVERY_TIER_ASSIGN_ROLES } from '@/lib/roles'
 import {
   TIER_META,
   canOwnStack,
@@ -78,7 +88,7 @@ import { comboMatchesStack } from '@/lib/toolStack'
 import { cn, formatDateTime, formatRelative, humanizeRole, humanizeStage } from '@/lib/utils'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { useProjectsStore } from '@/stores/projectsStore'
-import type { Project, Tool, ToolCombo, Training, User } from '@/types'
+import type { Project, ProjectTier, Tool, ToolCombo, Training, User } from '@/types'
 
 type ProjectTabsProps = {
   project: Project
@@ -159,6 +169,13 @@ function TransitionButtons({
           baGateBlocked = !currentUser || !canCompleteDevelopment(project, currentUser)
           baGateReason = developmentGateBlockReason(project) ??
             (!currentUser ? 'Sign in to complete this stage.' : null)
+        } else if (
+          transition.toStage === 'Deployment' &&
+          (transition.toStatus === 'NotStarted' || transition.toStatus === 'InProgress')
+        ) {
+          baGateBlocked = !currentUser || !canEnterDeployment(project, currentUser)
+          baGateReason = deploymentEntryBlockReason(project) ??
+            (!currentUser ? 'Sign in to advance.' : null)
         } else if (isComplete && stage === 'Deployment') {
           baGateBlocked = !currentUser || !canCompleteDeployment(project, currentUser)
           baGateReason = deploymentGateBlockReason(project) ??
@@ -220,11 +237,19 @@ export function ProjectOverviewTab({
   const canAct = currentUser ? canActOnStage(currentUser.role, project.currentStage) : false
   const activity = recentAuditEntries(project, 4)
   const logProjectReview = useProjectsStore((s) => s.logProjectReview)
+  const assignDeliveryTier = useProjectsStore((s) => s.assignDeliveryTier)
   const [reviewNote, setReviewNote] = useState('')
 
   const stackTrainings = trainings.filter((training) =>
     training.toolIds.some((toolId) => project.toolStack.some((entry) => entry.toolId === toolId)),
   )
+
+  const preDevelopment =
+    project.status === 'Qualified' || project.status === 'QualifiedDraft'
+  const canAssignTier =
+    currentUser !== null &&
+    preDevelopment &&
+    DELIVERY_TIER_ASSIGN_ROLES.includes(currentUser.role)
 
   const showTierCard =
     project.tier !== null &&
@@ -250,6 +275,16 @@ export function ProjectOverviewTab({
   const reviewEntries = project.auditLog
     .filter((entry) => isProjectReviewEntry(entry.note))
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+
+  const handleAssignTier = (value: string) => {
+    if (!currentUser) return
+    try {
+      assignDeliveryTier(project.id, value as ProjectTier, currentUser)
+      toast.success(`Delivery tier set to ${value}.`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not assign delivery tier.')
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px]">
@@ -343,6 +378,55 @@ export function ProjectOverviewTab({
           </div>
         </CollapsibleSection>
 
+        {preDevelopment && (
+          <div className="mb-3.5 border-t-[0.5px] border-stone-200 pt-3.5">
+            <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
+              <Layers className="h-3.5 w-3.5 text-indigo-700" />
+              Delivery tier assignment
+            </div>
+            <div className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]">
+              <p className="mb-2 text-stone-600">
+                Assigned by Data Engineering, Governance Lead, or Admin before the project can
+                proceed. Independent of risk classification.
+              </p>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-stone-500">Current:</span>
+                {project.tier ? (
+                  <TierBadge tier={project.tier} />
+                ) : (
+                  <span className="rounded-sm border-[0.5px] border-stone-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-600">
+                    Not yet assigned
+                  </span>
+                )}
+              </div>
+              {canAssignTier ? (
+                <Select
+                  value={project.tier ?? undefined}
+                  onValueChange={handleAssignTier}
+                >
+                  <SelectTrigger className="h-9 w-full max-w-sm text-xs">
+                    <SelectValue placeholder="Select delivery tier…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(['Tier1', 'Tier2', 'Tier3'] as ProjectTier[]).map((tier) => (
+                      <SelectItem key={tier} value={tier} className="text-xs">
+                        {tier} — {TIER_META[tier].label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-[10px] text-stone-500">
+                  Only Data Engineering, Governance Lead, or Admin can assign the delivery tier.
+                </p>
+              )}
+              {project.tier && TIER_META[project.tier] && (
+                <p className="mt-2 text-stone-600">{TIER_META[project.tier].approach}</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {showTierCard && tierMeta && project.tier && (
           <div className="mb-3.5 border-t-[0.5px] border-stone-200 pt-3.5">
             <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold text-stone-900">
@@ -352,7 +436,9 @@ export function ProjectOverviewTab({
             <div className="rounded-md border-[0.5px] border-stone-200 bg-stone-50 p-3 text-[11px]">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <TierBadge tier={project.tier} />
-                <span className="text-stone-500">Risk: {tierMeta.risk}</span>
+                <span className="text-stone-500">
+                  Risk: {project.qualification?.riskTier ?? '—'}
+                </span>
               </div>
               <p className="mb-2 text-stone-700">{tierMeta.approach}</p>
               <p className="mb-2 text-stone-600">{tierMeta.guidance}</p>
@@ -452,10 +538,18 @@ export function ProjectOverviewTab({
             <VendorSaqPanel project={project} currentUser={currentUser} />
           )}
           {project.currentStage === 'Development' && (
-            <RequirementsPanel project={project} currentUser={currentUser} />
+            <>
+              <RequirementsPanel project={project} currentUser={currentUser} />
+              <PmRequirementsGatePanel project={project} currentUser={currentUser} />
+            </>
           )}
+          {project.currentStage === 'Development' &&
+            project.stageStatus.Development === 'Completed' && (
+              <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
+            )}
           {project.currentStage === 'Deployment' && (
             <>
+              <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
               <UatPanel project={project} currentUser={currentUser} />
               <VerificationPanel project={project} currentUser={currentUser} />
             </>
@@ -627,10 +721,17 @@ export function ProjectLifecycleTab({
               <VendorSaqPanel project={project} currentUser={currentUser} />
             )}
             {isCurrent && meta.stage === 'Development' && (
-              <RequirementsPanel project={project} currentUser={currentUser} />
+              <>
+                <RequirementsPanel project={project} currentUser={currentUser} />
+                <PmRequirementsGatePanel project={project} currentUser={currentUser} />
+                {project.stageStatus.Development === 'Completed' && (
+                  <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
+                )}
+              </>
             )}
             {isCurrent && meta.stage === 'Deployment' && (
               <>
+                <PmDevelopmentGatePanel project={project} currentUser={currentUser} />
                 <UatPanel project={project} currentUser={currentUser} />
                 <VerificationPanel project={project} currentUser={currentUser} />
               </>
@@ -787,11 +888,23 @@ export function ProjectToolSelectionTab({
             )}
             <Button
               type="button"
-              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700 disabled:opacity-50"
+              disabled={!project.tier}
+              title={
+                !project.tier
+                  ? 'Assign a delivery tier before this project can proceed'
+                  : undefined
+              }
               onClick={handleSubmitForReview}
             >
               Submit for review
             </Button>
+          </div>
+        )}
+        {editable && !project.tier && (
+          <div className="mt-2 rounded-md border-[0.5px] border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+            Assign a delivery tier before this project can proceed. Data Engineering, Governance
+            Lead, or Admin can set it on the Overview tab.
           </div>
         )}
         {editable && !canEdit && currentUser && (
@@ -1021,10 +1134,12 @@ export function ProjectBenefitsTab({
                 {humanizeRole(approvalEntry.actorRole)}
               </p>
             )}
-            {project.tier && (
+            {project.tier ? (
               <p className="flex items-center gap-2">
                 Tier: <TierBadge tier={project.tier} />
               </p>
+            ) : (
+              <p>Tier: Not yet assigned</p>
             )}
           </div>
         </div>

@@ -146,6 +146,10 @@ This is a static Vite + React SPA. `vercel.json` configures the build and client
 
 Local production check: `npm run build && npm run preview`.
 
+### OpenAI proxy (optional)
+
+A Vercel serverless function at `/api/llm` keeps `OPENAI_API_KEY` and `OPENAI_MODEL` server-side (no `VITE_` prefix). Draft-assist on the submission wizard uses it when configured; existing demo flows still work without it. Setup: [`docs/llm/SETUP.md`](docs/llm/SETUP.md).
+
 ## Status
 
 Phase 0 demo. Not production-ready. No real data. No real auth. Safe to share with internal stakeholders only.

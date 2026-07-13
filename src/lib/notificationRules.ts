@@ -43,6 +43,7 @@ export function recipientsFor(
       return { to: govRisk, cc: unique([submitter]) }
     case 'qualified':
     case 'not-qualified':
+    case 'cancelled':
       return { to: unique([submitter]), cc: gov }
     case 'submitted-for-review':
       return { to: pmGov, cc: unique([submitter]) }
@@ -136,6 +137,7 @@ const SUBJECTS: Record<NotificationKind, (title: string) => string> = {
   'submitted-for-assessment': (t) => `[GCS AI] Submitted for assessment — ${t}`,
   qualified: (t) => `[GCS AI] Qualified — ${t}`,
   'not-qualified': (t) => `[GCS AI] Not qualified — ${t}`,
+  cancelled: (t) => `[GCS AI] Project cancelled — ${t}`,
   'submitted-for-review': (t) => `[GCS AI] Tool stack submitted for review — ${t}`,
   approved: (t) => `[GCS AI] Submission approved — ${t}`,
   rejected: (t) => `[GCS AI] Submission rejected — ${t}`,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canCompleteDeployment,
   canCompleteDevelopment,
+  canEnterDeployment,
   deploymentGateBlockReason,
   isBaGateMandatory,
   requirementsComplete,
@@ -71,6 +72,8 @@ function baseProject(overrides?: Partial<Project>): Project {
     qualification: null,
     readiness: null,
     requirements: null,
+    pmRequirementsGate: null,
+    pmDevelopmentGate: null,
     uat: null,
     activeSince: null,
     lastActivityAt: '',
@@ -179,6 +182,56 @@ describe('baArtifacts', () => {
     expect(canCompleteDevelopment(incomplete, de)).toBe(false)
     expect(canCompleteDevelopment(incomplete, admin)).toBe(true)
     expect(canCompleteDevelopment(baseProject({ tier: 'Tier1' }), de)).toBe(true)
+  })
+
+  it('Tier2 requires PM Gate 1 Accept in addition to BA confirm; Tier1 has no gate', () => {
+    const confirmed = baseProject({
+      tier: 'Tier2',
+      requirements: {
+        items: [{ id: '1', text: 'A', priority: 'Must' }],
+        notes: '',
+        confirmedBy: 'usr-ba',
+        confirmedAt: '2026-01-01',
+      },
+      pmRequirementsGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+    })
+    expect(canCompleteDevelopment(confirmed, de)).toBe(false)
+
+    const accepted = baseProject({
+      ...confirmed,
+      pmRequirementsGate: {
+        status: 'Accepted',
+        decidedBy: 'usr-pm',
+        decidedAt: '2026-01-02',
+        reason: '',
+      },
+    })
+    expect(canCompleteDevelopment(accepted, de)).toBe(true)
+    expect(canCompleteDevelopment(baseProject({ tier: 'Tier1' }), de)).toBe(true)
+  })
+
+  it('canEnterDeployment requires Gate 2 Accept for Tier3 only', () => {
+    const t3 = baseProject({
+      tier: 'Tier3',
+      pmDevelopmentGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+    })
+    expect(canEnterDeployment(t3, de)).toBe(false)
+    expect(canEnterDeployment(t3, admin)).toBe(true)
+    expect(
+      canEnterDeployment(
+        baseProject({
+          tier: 'Tier3',
+          pmDevelopmentGate: {
+            status: 'Accepted',
+            decidedBy: 'usr-pm',
+            decidedAt: '2026-01-02',
+            reason: '',
+          },
+        }),
+        de,
+      ),
+    ).toBe(true)
+    expect(canEnterDeployment(baseProject({ tier: 'Tier2' }), de)).toBe(true)
   })
 
   it('canCompleteDeployment requires both UAT and verification for Tier3', () => {

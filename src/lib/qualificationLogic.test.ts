@@ -60,17 +60,19 @@ describe('qualificationLogic', () => {
     expect(qualifiesAsAI(one)).toBe(true)
   })
 
-  it('canQualify requires readiness + AI + tier + reward', () => {
+  it('canQualify requires AI Section A + reward; readiness Not Met does not block', () => {
     const readiness = readinessWithCounts(4, 4, 4)
+    const notMet = readinessWithCounts(3, 4, 4)
     const qualification = emptyQualification()
     qualification.primary[0] = true
     qualification.riskTier = 'Medium'
 
-    expect(canQualify(readiness, qualification, null, 'Kaizen')).toBe(false)
-    expect(canQualify(readiness, qualification, 'Tier2', null)).toBe(false)
-    expect(canQualify(readinessWithCounts(3, 4, 4), qualification, 'Tier2', 'Kaizen')).toBe(false)
-    expect(canQualify(readiness, emptyQualification(), 'Tier2', 'Kaizen')).toBe(false)
-    expect(canQualify(readiness, qualification, 'Tier2', 'Kaizen')).toBe(true)
+    expect(canQualify(readiness, qualification, null)).toBe(false)
+    expect(canQualify(readiness, emptyQualification(), 'Kaizen')).toBe(false)
+    expect(canQualify(notMet, qualification, 'Kaizen')).toBe(true)
+    expect(canQualify(readiness, qualification, 'Kaizen')).toBe(true)
+    expect(canQualify(notMet, qualification, 'TeamProject')).toBe(true)
+    expect(canQualify(notMet, qualification, 'Innovation')).toBe(true)
   })
 
   it('suggestTier nudges from sensitivity and scale', () => {

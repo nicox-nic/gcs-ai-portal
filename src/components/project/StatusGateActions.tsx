@@ -21,6 +21,7 @@ import { useProjectsStore } from '@/stores/projectsStore'
 import type { Project, User } from '@/types'
 
 const REVIEW_ROLES: User['role'][] = ['GovernanceLead', 'AIProgramManager', 'Admin']
+const CANCEL_ACTIVE_ROLES: User['role'][] = ['GovernanceLead', 'RiskCompliance', 'Admin']
 
 type GateDialog =
   | { kind: 'approve' }
@@ -33,6 +34,7 @@ type GateDialog =
   | { kind: 'sponsorDisapprove' }
   | { kind: 'reviseDisapproval' }
   | { kind: 'reactivate' }
+  | { kind: 'cancelActive' }
   | null
 
 type StatusGateActionsProps = {
@@ -74,6 +76,7 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
   const sponsorDisapprove = useProjectsStore((s) => s.sponsorDisapprove)
   const reviseAfterDisapproval = useProjectsStore((s) => s.reviseAfterDisapproval)
   const reactivateProject = useProjectsStore((s) => s.reactivateProject)
+  const cancelProject = useProjectsStore((s) => s.cancelProject)
 
   const [dialog, setDialog] = useState<GateDialog>(null)
   const [reason, setReason] = useState('')
@@ -100,6 +103,8 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
       currentUser.role === 'MaintenanceSustainability' ||
       canClosureOwner(currentUser, project) ||
       canOwnStack(project, currentUser))
+  const canCancelActive =
+    currentUser !== null && CANCEL_ACTIVE_ROLES.includes(currentUser.role)
 
   const relevantStatuses = new Set([
     'Submitted',
@@ -250,19 +255,33 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         </Button>
       )}
 
-      {project.status === 'Active' && canSubmitClosure && (
-        <Button
-          type="button"
-          className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700 disabled:opacity-50"
-          disabled={!hoursReady}
-          onClick={() => {
-            setSponsorPick(project.sponsorId ?? sponsors[0]?.id ?? '')
-            setHoursInput(project.reportedBenefitHours?.toString() ?? '')
-            setDialog({ kind: 'submitSponsor' })
-          }}
-        >
-          Submit for sponsor approval
-        </Button>
+      {project.status === 'Active' && (
+        <div className="flex flex-wrap gap-2">
+          {canSubmitClosure && (
+            <Button
+              type="button"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700 disabled:opacity-50"
+              disabled={!hoursReady}
+              onClick={() => {
+                setSponsorPick(project.sponsorId ?? sponsors[0]?.id ?? '')
+                setHoursInput(project.reportedBenefitHours?.toString() ?? '')
+                setDialog({ kind: 'submitSponsor' })
+              }}
+            >
+              Submit for sponsor approval
+            </Button>
+          )}
+          {canCancelActive && (
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-8 text-xs"
+              onClick={() => setDialog({ kind: 'cancelActive' })}
+            >
+              Cancel project
+            </Button>
+          )}
+        </div>
       )}
 
       {project.status === 'ForSponsorApproval' && canSponsor && (
@@ -593,6 +612,44 @@ export function StatusGateActions({ project, currentUser }: StatusGateActionsPro
         onConfirm={() => {
           if (!currentUser) return
           runSafe(() => reactivateProject(project.id, currentUser), 'Project reactivated.')
+        }}
+      />
+
+      <ConfirmDialog
+        open={dialog?.kind === 'cancelActive'}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDialog(null)
+            setReason('')
+          }
+        }}
+        title="Cancel this active project?"
+        description={
+          <div className="space-y-2 text-left">
+            <p>Marks the project Cancelled. The submitter will be notified.</p>
+            <div>
+              <Label className="mb-1.5 block text-[11px] text-stone-600">Reason</Label>
+              <Textarea
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                className="min-h-[72px] text-xs"
+                placeholder="Why is this project being cancelled?"
+              />
+            </div>
+          </div>
+        }
+        confirmLabel="Cancel project"
+        variant="destructive"
+        onConfirm={() => {
+          if (!currentUser) return
+          if (!reason.trim()) {
+            toast.error('A cancellation reason is required.')
+            return false
+          }
+          runSafe(
+            () => cancelProject(project.id, reason, currentUser),
+            'Project cancelled.',
+          )
         }}
       />
     </div>

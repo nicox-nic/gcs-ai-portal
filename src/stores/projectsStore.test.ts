@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_TODAY } from '@/data/seedProjects'
 import { SEED_USERS } from '@/data/seedRoles'
+import { emptyQualification, emptyReadiness } from '@/lib/qualificationCriteria'
 import { useCatalogStore } from '@/stores/catalogStore'
 import { demoNowIso, useDemoClockStore } from '@/stores/demoClockStore'
 import { useNotificationsStore } from '@/stores/notificationsStore'
@@ -48,6 +49,7 @@ function makeQualifiedProject(overrides?: Partial<Project>): Project {
             status: 'Qualified',
             currentStage: 'Policy',
             stageStatus: { ...p.stageStatus, Assessment: 'Completed', Policy: 'NotStarted' },
+            tier: 'Tier1',
             ...overrides,
           }
         : p,
@@ -622,6 +624,363 @@ describe('projectsStore Phase 8 BA gates', () => {
       useProjectsStore
         .getState()
         .advanceStage(project.id, 'SupplierOversight', 'Completed', rc, 'Internal-only'),
+    ).not.toThrow()
+  })
+})
+
+describe('projectsStore qualifyProject tier decoupling', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('leaves delivery tier null and stores risk on qualification.riskTier', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Qualify decoupling test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.getState().submitProject(created.id)
+
+    // Readiness Not Met on feasibility — must not block Qualify.
+    const readiness = emptyReadiness()
+    readiness.feasibility = readiness.feasibility.map((_, i) => i < 2)
+    readiness.viability = readiness.viability.map(() => true)
+    readiness.desirability = readiness.desirability.map(() => true)
+
+    const qualification = emptyQualification()
+    qualification.primary[0] = true
+    qualification.riskTier = 'Medium'
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().qualifyProject(
+      created.id,
+      {
+        readiness,
+        qualification,
+        tierRationale: 'Medium risk — limited personal data',
+        rewardCategory: 'TeamProject',
+      },
+      gov,
+      '',
+    )
+
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === created.id)
+    expect(updated?.status).toBe('Qualified')
+    expect(updated?.tier).toBeNull()
+    expect(updated?.qualification?.riskTier).toBe('Medium')
+    expect(updated?.rewardCategory).toBe('TeamProject')
+    expect(updated?.readiness?.feasibility.filter(Boolean).length).toBe(2)
+  })
+})
+
+describe('projectsStore cancelProject notification', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('notifies the submitter when a project is cancelled', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Cancel notify test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.getState().submitProject(created.id)
+    useNotificationsStore.getState().clear()
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().cancelProject(created.id, 'Duplicate of existing work', gov)
+
+    const notes = useNotificationsStore.getState().notifications
+    const cancelled = notes.find((n) => n.kind === 'cancelled' && n.projectId === created.id)
+    expect(cancelled).toBeDefined()
+    expect(cancelled?.to).toContain('usr-submitter')
+  })
+
+  it('cancels an Active project and notifies the submitter', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier1',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+    })
+    useNotificationsStore.getState().clear()
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().cancelProject(project.id, 'No longer needed', gov)
+
+    const updated = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(updated?.status).toBe('Cancelled')
+
+    const notes = useNotificationsStore.getState().notifications
+    const cancelled = notes.find((n) => n.kind === 'cancelled' && n.projectId === project.id)
+    expect(cancelled).toBeDefined()
+    expect(cancelled?.to).toContain(project.submitterId)
+  })
+})
+
+describe('projectsStore assignDeliveryTier', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  function makeQualifiedForTier(): string {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Tier assign test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Qualified' as const,
+              currentStage: 'Policy' as const,
+              stageStatus: { ...p.stageStatus, Assessment: 'Completed', Policy: 'NotStarted' },
+              tier: null,
+            }
+          : p,
+      ),
+    }))
+    return created.id
+  }
+
+  it('sets project.tier for DE, Admin, and GovernanceLead', () => {
+    const id = makeQualifiedForTier()
+    const de = userByRole('DataEngineering')
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier2', de)
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier2')
+
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('GovernanceLead'))
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier1')
+
+    useProjectsStore.getState().assignDeliveryTier(id, 'Tier3', userByRole('Admin'))
+    expect(useProjectsStore.getState().projects.find((p) => p.id === id)?.tier).toBe('Tier3')
+  })
+
+  it('blocks non-assigner roles', () => {
+    const id = makeQualifiedForTier()
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('Submitter')),
+    ).toThrow(/Data Engineering|Governance Lead|Admin/i)
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier1', userByRole('BusinessAnalyst')),
+    ).toThrow()
+  })
+
+  it('blocks assignment once past Qualified / QualifiedDraft', () => {
+    const id = makeQualifiedForTier()
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === id ? { ...p, status: 'Submitted' as const, tier: 'Tier1' as const } : p,
+      ),
+    }))
+    expect(() =>
+      useProjectsStore.getState().assignDeliveryTier(id, 'Tier2', userByRole('DataEngineering')),
+    ).toThrow(/locked|pre-development|Qualified/i)
+  })
+})
+
+describe('projectsStore fail-closed delivery tier entry', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  it('blocks submitForReview when tier is null, then allows after assignment', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Fail-closed entry test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Qualified' as const,
+              tier: null,
+              toolStack: [{ toolId: 'tool-sharepoint', role: 'primary' as const }],
+            }
+          : p,
+      ),
+    }))
+
+    const submitter = userByRole('Submitter')
+    expect(() =>
+      useProjectsStore.getState().submitForReview(created.id, submitter),
+    ).toThrow(/Assign a delivery tier/i)
+
+    useProjectsStore
+      .getState()
+      .assignDeliveryTier(created.id, 'Tier1', userByRole('DataEngineering'))
+
+    expect(() =>
+      useProjectsStore.getState().submitForReview(created.id, submitter),
+    ).not.toThrow()
+    expect(useProjectsStore.getState().projects.find((p) => p.id === created.id)?.status).toBe(
+      'Submitted',
+    )
+  })
+})
+
+describe('projectsStore PM delivery gates', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  it('Gate 1 Reject clears BA confirm; Accept unlocks Development complete for Tier2', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier2',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'InProgress',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      businessAnalystId: 'usr-ba',
+      requirements: {
+        items: [{ id: '1', text: 'Need', priority: 'Must' }],
+        notes: '',
+        confirmedBy: 'usr-ba',
+        confirmedAt: '2026-01-01',
+      },
+      pmRequirementsGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', de, 'Done'),
+    ).toThrow(/Gate 1|PM must Accept/i)
+
+    const pm = userByRole('AIProgramManager')
+    useProjectsStore
+      .getState()
+      .decidePmRequirementsGate(project.id, 'Rejected', 'Missing NFR', pm)
+    const afterReject = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(afterReject?.pmRequirementsGate?.status).toBe('Rejected')
+    expect(afterReject?.requirements?.confirmedBy).toBeNull()
+
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === project.id && p.requirements
+          ? {
+              ...p,
+              requirements: {
+                ...p.requirements,
+                confirmedBy: 'usr-ba',
+                confirmedAt: '2026-01-03',
+              },
+            }
+          : p,
+      ),
+    }))
+    useProjectsStore.getState().decidePmRequirementsGate(project.id, 'Accepted', '', pm)
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Development', 'Completed', de, 'Done'),
+    ).not.toThrow()
+  })
+
+  it('Tier3 Gate 2 Reject returns Development to InProgress; Accept allows advance', () => {
+    const project = makeQualifiedProject({
+      status: 'Active',
+      tier: 'Tier3',
+      currentStage: 'Development',
+      stageStatus: {
+        Assessment: 'Completed',
+        Policy: 'Completed',
+        SupplierOversight: 'Completed',
+        Development: 'Completed',
+        Deployment: 'NotStarted',
+        Use: 'NotStarted',
+        Improvement: 'NotStarted',
+        Decommissioning: 'NotStarted',
+        Enablement: 'NotStarted',
+      },
+      pmRequirementsGate: {
+        status: 'Accepted',
+        decidedBy: 'usr-pm',
+        decidedAt: '2026-01-01',
+        reason: '',
+      },
+      pmDevelopmentGate: { status: 'Pending', decidedBy: null, decidedAt: null, reason: '' },
+      businessAnalystId: 'usr-ba',
+      requirements: {
+        items: [{ id: '1', text: 'Need', priority: 'Must' }],
+        notes: '',
+        confirmedBy: 'usr-ba',
+        confirmedAt: '2026-01-01',
+      },
+    })
+    const de = userByRole('DataEngineering')
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Deployment', 'NotStarted', de, 'Advance'),
+    ).toThrow(/Gate 2/i)
+
+    const pm = userByRole('AIProgramManager')
+    useProjectsStore
+      .getState()
+      .decidePmDevelopmentGate(project.id, 'Rejected', 'Rework model', pm)
+    const rejected = useProjectsStore.getState().projects.find((p) => p.id === project.id)
+    expect(rejected?.stageStatus.Development).toBe('InProgress')
+    expect(rejected?.pmDevelopmentGate?.status).toBe('Rejected')
+
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === project.id
+          ? {
+              ...p,
+              stageStatus: { ...p.stageStatus, Development: 'Completed' },
+              pmDevelopmentGate: {
+                status: 'Pending',
+                decidedBy: null,
+                decidedAt: null,
+                reason: '',
+              },
+            }
+          : p,
+      ),
+    }))
+    useProjectsStore.getState().decidePmDevelopmentGate(project.id, 'Accepted', '', pm)
+    expect(() =>
+      useProjectsStore
+        .getState()
+        .advanceStage(project.id, 'Deployment', 'NotStarted', de, 'Advance'),
     ).not.toThrow()
   })
 })
