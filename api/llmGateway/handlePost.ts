@@ -1,3 +1,4 @@
+import { isBodyWithinLimit, MAX_BODY_BYTES } from './limits'
 import { isRegisteredOperation, OPERATION_REGISTRY } from './operations'
 import { isGatewayEnabled, resolveProvider } from './provider'
 import type { DraftAssistInput, LlmOperationId } from './types'
@@ -24,9 +25,18 @@ export type GatewayRequestBody = {
   temperature?: unknown
 }
 
+export function methodNotAllowed(): Response {
+  return jsonResponse(
+    405,
+    { error: 'Method not allowed.' },
+    { Allow: 'GET, POST' },
+  )
+}
+
 /**
- * Phase 1: operation allowlist + kill-switch + provider seam.
+ * Operation allowlist + kill-switch + provider seam + request limits.
  * Rejects the legacy generic messages[] proxy contract.
+ * Client max_tokens / temperature / model are ignored — server sets ceilings.
  */
 export async function handleLlmPost(
   request: Request,
@@ -36,9 +46,20 @@ export async function handleLlmPost(
     return jsonResponse(503, { error: 'LLM gateway is disabled.' })
   }
 
+  let rawText: string
+  try {
+    rawText = await request.text()
+  } catch {
+    return jsonResponse(400, { error: 'Invalid request body.' })
+  }
+
+  if (!isBodyWithinLimit(rawText, MAX_BODY_BYTES)) {
+    return jsonResponse(413, { error: 'Request body too large.' })
+  }
+
   let body: GatewayRequestBody
   try {
-    body = (await request.json()) as GatewayRequestBody
+    body = JSON.parse(rawText) as GatewayRequestBody
   } catch {
     return jsonResponse(400, { error: 'Invalid JSON body.' })
   }
@@ -63,12 +84,18 @@ export async function handleLlmPost(
     return jsonResponse(400, { error: 'Invalid input for operation.' })
   }
 
+  const draftAssistInput = parsedInput as DraftAssistInput
+  if (draftAssistInput.draft.length > definition.maxInputChars) {
+    return jsonResponse(400, { error: 'Input exceeds maximum allowed length.' })
+  }
+
   const provider = resolveProvider(env)
   if (!provider) {
     return jsonResponse(503, { error: 'LLM provider is not configured.' })
   }
 
-  const messages = definition.buildMessages(parsedInput as DraftAssistInput)
+  // Token ceiling is owned by the operation definition — never from the client body.
+  const messages = definition.buildMessages(draftAssistInput)
   const result = await provider.complete(messages, {
     maxCompletionTokens: definition.maxCompletionTokens,
     temperature: definition.temperature,
