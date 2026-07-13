@@ -43,7 +43,10 @@ describe('Phase 4 sanitized responses + health lockdown', () => {
       env(),
     )
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ text: 'clean' })
+    const body = (await res.json()) as { text: string; correlationId: string }
+    expect(body.text).toBe('clean')
+    expect(body.correlationId).toMatch(/^llm_/)
+    expect(res.headers.get('X-Correlation-Id')).toBe(body.correlationId)
   })
 
   it('upstream error returns sanitized generic error (no payload passthrough)', async () => {
@@ -59,7 +62,8 @@ describe('Phase 4 sanitized responses + health lockdown', () => {
     )
     expect(res.status).toBe(429)
     const body = (await res.json()) as Record<string, unknown>
-    expect(body).toEqual({ error: 'LLM request failed.', status: 429 })
+    expect(body).toMatchObject({ error: 'LLM request failed.', status: 429 })
+    expect(typeof body.correlationId).toBe('string')
     expect(JSON.stringify(body)).not.toMatch(/choices|api.?key|Bearer/i)
   })
 

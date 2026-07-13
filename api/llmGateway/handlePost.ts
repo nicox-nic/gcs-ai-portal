@@ -1,3 +1,4 @@
+import { createCorrelationId } from './correlation'
 import { isBodyWithinLimit, MAX_BODY_BYTES } from './limits'
 import { isRegisteredOperation, OPERATION_REGISTRY } from './operations'
 import { isAllowedOrigin, PROVIDER_TIMEOUT_MS } from './origin'
@@ -15,6 +16,19 @@ function jsonResponse(
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...JSON_HEADERS, ...extraHeaders },
+  })
+}
+
+function withCorrelation(
+  correlationId: string,
+  status: number,
+  body: Record<string, unknown>,
+  extraHeaders?: HeadersInit,
+): Response {
+  // correlationId is request-scoped scaffolding only — not a user identity.
+  return jsonResponse(status, { ...body, correlationId }, {
+    'X-Correlation-Id': correlationId,
+    ...extraHeaders,
   })
 }
 
@@ -45,18 +59,23 @@ export async function handleLlmPost(
   request: Request,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<Response> {
+  // Opaque request id for future log correlation. Not auth / not user identity
+  // (Phase-1 auth will attach real identity later).
+  const correlationId = createCorrelationId()
+
   if (!isGatewayEnabled(env)) {
-    return jsonResponse(503, { error: 'LLM gateway is disabled.' })
+    return withCorrelation(correlationId, 503, { error: 'LLM gateway is disabled.' })
   }
 
   if (!isAllowedOrigin(request, env)) {
-    return jsonResponse(403, { error: 'Origin not allowed.' })
+    return withCorrelation(correlationId, 403, { error: 'Origin not allowed.' })
   }
 
   const ip = clientIpFromRequest(request)
   const rate = checkRateLimit(ip)
   if (!rate.allowed) {
-    return jsonResponse(
+    return withCorrelation(
+      correlationId,
       429,
       { error: 'Rate limit exceeded.' },
       { 'Retry-After': String(rate.retryAfterSec) },
@@ -67,29 +86,29 @@ export async function handleLlmPost(
   try {
     rawText = await request.text()
   } catch {
-    return jsonResponse(400, { error: 'Invalid request body.' })
+    return withCorrelation(correlationId, 400, { error: 'Invalid request body.' })
   }
 
   if (!isBodyWithinLimit(rawText, MAX_BODY_BYTES)) {
-    return jsonResponse(413, { error: 'Request body too large.' })
+    return withCorrelation(correlationId, 413, { error: 'Request body too large.' })
   }
 
   let body: GatewayRequestBody
   try {
     body = JSON.parse(rawText) as GatewayRequestBody
   } catch {
-    return jsonResponse(400, { error: 'Invalid JSON body.' })
+    return withCorrelation(correlationId, 400, { error: 'Invalid JSON body.' })
   }
 
   // Reject legacy generic OpenAI-proxy shape (messages[]).
   if (body.messages !== undefined) {
-    return jsonResponse(400, {
+    return withCorrelation(correlationId, 400, {
       error: 'Generic messages[] requests are not allowed. Use a registered operation.',
     })
   }
 
   if (!isRegisteredOperation(body.operation)) {
-    return jsonResponse(400, {
+    return withCorrelation(correlationId, 400, {
       error: 'Unknown or missing operation. Use a registered operation id.',
     })
   }
@@ -98,17 +117,21 @@ export async function handleLlmPost(
   const definition = OPERATION_REGISTRY[operationId]
   const parsedInput = definition.parseInput(body.input)
   if (!parsedInput) {
-    return jsonResponse(400, { error: 'Invalid input for operation.' })
+    return withCorrelation(correlationId, 400, { error: 'Invalid input for operation.' })
   }
 
   const draftAssistInput = parsedInput as DraftAssistInput
   if (draftAssistInput.draft.length > definition.maxInputChars) {
-    return jsonResponse(400, { error: 'Input exceeds maximum allowed length.' })
+    return withCorrelation(correlationId, 400, {
+      error: 'Input exceeds maximum allowed length.',
+    })
   }
 
   const provider = resolveProvider(env)
   if (!provider) {
-    return jsonResponse(503, { error: 'LLM provider is not configured.' })
+    return withCorrelation(correlationId, 503, {
+      error: 'LLM provider is not configured.',
+    })
   }
 
   // Token ceiling is owned by the operation definition — never from the client body.
@@ -128,13 +151,13 @@ export async function handleLlmPost(
 
   if (!result.ok) {
     const status = result.timedOut ? 504 : result.status >= 400 ? result.status : 502
-    return jsonResponse(status, {
+    return withCorrelation(correlationId, status, {
       error: result.timedOut ? 'LLM provider timed out.' : 'LLM request failed.',
       status,
     })
   }
 
-  return jsonResponse(200, { text: result.text })
+  return withCorrelation(correlationId, 200, { text: result.text })
 }
 
 export function handleLlmGet(env: NodeJS.ProcessEnv = process.env): Response {

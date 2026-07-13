@@ -62,7 +62,8 @@ describe('handleLlmPost Phase 1 contract', () => {
 
     expect(res.status).toBe(503)
     const body = await res.json()
-    expect(body).toEqual({ error: 'LLM gateway is disabled.' })
+    expect(body).toMatchObject({ error: 'LLM gateway is disabled.' })
+    expect(typeof body.correlationId).toBe('string')
     expect(complete).not.toHaveBeenCalled()
   })
 
@@ -99,6 +100,6 @@ describe('handleLlmPost Phase 1 contract', () => {
       env(),
     )
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ text: 'Improved draft.' })
+    expect(await res.json()).toMatchObject({ text: 'Improved draft.' })
   })
 })
