@@ -49,6 +49,7 @@ function makeQualifiedProject(overrides?: Partial<Project>): Project {
             status: 'Qualified',
             currentStage: 'Policy',
             stageStatus: { ...p.stageStatus, Assessment: 'Completed', Policy: 'NotStarted' },
+            tier: 'Tier1',
             ...overrides,
           }
         : p,
@@ -767,5 +768,50 @@ describe('projectsStore assignDeliveryTier', () => {
     expect(() =>
       useProjectsStore.getState().assignDeliveryTier(id, 'Tier2', userByRole('DataEngineering')),
     ).toThrow(/locked|pre-development|Qualified/i)
+  })
+})
+
+describe('projectsStore fail-closed delivery tier entry', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+  })
+
+  it('blocks submitForReview when tier is null, then allows after assignment', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Fail-closed entry test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.setState((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === created.id
+          ? {
+              ...p,
+              status: 'Qualified' as const,
+              tier: null,
+              toolStack: [{ toolId: 'tool-sharepoint', role: 'primary' as const }],
+            }
+          : p,
+      ),
+    }))
+
+    const submitter = userByRole('Submitter')
+    expect(() =>
+      useProjectsStore.getState().submitForReview(created.id, submitter),
+    ).toThrow(/Assign a delivery tier/i)
+
+    useProjectsStore
+      .getState()
+      .assignDeliveryTier(created.id, 'Tier1', userByRole('DataEngineering'))
+
+    expect(() =>
+      useProjectsStore.getState().submitForReview(created.id, submitter),
+    ).not.toThrow()
+    expect(useProjectsStore.getState().projects.find((p) => p.id === created.id)?.status).toBe(
+      'Submitted',
+    )
   })
 })

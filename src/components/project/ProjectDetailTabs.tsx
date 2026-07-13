@@ -864,11 +864,23 @@ export function ProjectToolSelectionTab({
             )}
             <Button
               type="button"
-              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700"
+              className="h-8 bg-indigo-600 text-xs hover:bg-indigo-700 disabled:opacity-50"
+              disabled={!project.tier}
+              title={
+                !project.tier
+                  ? 'Assign a delivery tier before this project can proceed'
+                  : undefined
+              }
               onClick={handleSubmitForReview}
             >
               Submit for review
             </Button>
+          </div>
+        )}
+        {editable && !project.tier && (
+          <div className="mt-2 rounded-md border-[0.5px] border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+            Assign a delivery tier before this project can proceed. Data Engineering, Governance
+            Lead, or Admin can set it on the Overview tab.
           </div>
         )}
         {editable && !canEdit && currentUser && (
