@@ -848,6 +848,8 @@ export const useProjectsStore = create<ProjectsStore>()(
               : p,
           ),
         }))
+        const updated = get().projects.find((p) => p.id === projectId)
+        if (updated) notify(updated, 'cancelled', actor)
       },
 
       submitForReview: (projectId, actor) => {

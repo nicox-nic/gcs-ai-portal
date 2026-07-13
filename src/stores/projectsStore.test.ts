@@ -675,3 +675,31 @@ describe('projectsStore qualifyProject tier decoupling', () => {
     expect(updated?.readiness?.feasibility.filter(Boolean).length).toBe(2)
   })
 })
+
+describe('projectsStore cancelProject notification', () => {
+  beforeEach(() => {
+    useProjectsStore.getState().resetProjects()
+    useNotificationsStore.getState().clear()
+  })
+
+  it('notifies the submitter when a project is cancelled', () => {
+    const created = useProjectsStore.getState().createProject({
+      title: 'Cancel notify test',
+      submitterId: 'usr-submitter',
+      group: 'Engineering',
+      site: 'Cebu',
+      department: 'Test',
+      submission: minimalSubmission(),
+    })
+    useProjectsStore.getState().submitProject(created.id)
+    useNotificationsStore.getState().clear()
+
+    const gov = userByRole('GovernanceLead')
+    useProjectsStore.getState().cancelProject(created.id, 'Duplicate of existing work', gov)
+
+    const notes = useNotificationsStore.getState().notifications
+    const cancelled = notes.find((n) => n.kind === 'cancelled' && n.projectId === created.id)
+    expect(cancelled).toBeDefined()
+    expect(cancelled?.to).toContain('usr-submitter')
+  })
+})

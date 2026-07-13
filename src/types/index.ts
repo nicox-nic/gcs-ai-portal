@@ -331,6 +331,7 @@ export type NotificationKind =
   | 'submitted-for-assessment'
   | 'qualified'
   | 'not-qualified'
+  | 'cancelled'
   | 'submitted-for-review'
   | 'approved'
   | 'rejected'

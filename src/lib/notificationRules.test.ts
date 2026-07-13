@@ -9,6 +9,15 @@ function baseProject(overrides?: Partial<Project>): Project {
 }
 
 describe('recipientsFor (Phase 9–10)', () => {
+  it('cancelled mirrors not-qualified: TO submitter, CC governance', () => {
+    const project = baseProject({ submitterId: 'usr-submitter' })
+    const cancelled = recipientsFor('cancelled', project)
+    const notQualified = recipientsFor('not-qualified', project)
+    expect(cancelled.to).toEqual(notQualified.to)
+    expect(cancelled.cc).toEqual(notQualified.cc)
+    expect(cancelled.to).toContain('usr-submitter')
+  })
+
   it('puts assigned Sponsor on TO for completed and disapproved', () => {
     const project = baseProject({ sponsorId: 'usr-sponsor', submitterId: 'usr-submitter' })
     for (const kind of ['completed', 'disapproved'] as const) {

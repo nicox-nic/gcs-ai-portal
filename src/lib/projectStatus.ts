@@ -122,7 +122,7 @@ export const STATUS_META: Record<ProjectStatus, StatusMeta> = {
 
 const STATUS_TRANSITIONS: Record<ProjectStatus, ProjectStatus[]> = {
   IdeaDraft: ['ForAssessment', 'Cancelled'],
-  ForAssessment: ['Qualified', 'NotQualified'],
+  ForAssessment: ['Qualified', 'NotQualified', 'Cancelled'],
   NotQualified: ['ForAssessment', 'Cancelled'],
   Cancelled: [],
   Qualified: ['QualifiedDraft', 'Submitted'],
