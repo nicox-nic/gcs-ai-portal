@@ -47,7 +47,7 @@ export type ProjectStatus =
   | 'Idle'
   | 'Deactivated'
 
-/** 1:1 with RiskLevel: Tier1=Low, Tier2=Medium, Tier3=High */
+/** Delivery-ownership tier (Tier1/2/3), assigned by DE post-qualification; independent of risk. */
 export type ProjectTier = 'Tier1' | 'Tier2' | 'Tier3'
 
 export type RewardCategory = 'Kaizen' | 'TeamProject' | 'ManagementInitiative' | 'Innovation'
