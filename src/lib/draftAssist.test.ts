@@ -42,32 +42,30 @@ describe('applyDraftAssistDecision', () => {
 })
 
 describe('requestDraftAssist', () => {
-  it('returns null without calling the LLM when the field is empty', async () => {
-    const spy = vi.spyOn(llm, 'tryCallLLM').mockResolvedValue('should not run')
+  it('returns null without calling the gateway when the field is empty', async () => {
+    const spy = vi.spyOn(llm, 'tryCallOperation').mockResolvedValue('should not run')
     await expect(requestDraftAssist('background', '  ')).resolves.toBeNull()
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it('returns null when tryCallLLM fails (null) and leaves callers able to keep the field', async () => {
-    vi.spyOn(llm, 'tryCallLLM').mockResolvedValue(null)
+  it('returns null when tryCallOperation fails (null) and leaves callers able to keep the field', async () => {
+    vi.spyOn(llm, 'tryCallOperation').mockResolvedValue(null)
     const draft = 'Engineers waste time triaging tickets.'
     await expect(requestDraftAssist('background', draft)).resolves.toBeNull()
     expect(applyDraftAssistDecision(draft, null, 'unavailable')).toBe(draft)
   })
 
-  it('does not pass a model option so the server env decides', async () => {
-    const spy = vi.spyOn(llm, 'tryCallLLM').mockResolvedValue('rewritten')
+  it('calls draft_assist operation with structured input (no client system message)', async () => {
+    const spy = vi.spyOn(llm, 'tryCallOperation').mockResolvedValue('rewritten')
     await requestDraftAssist('objective', 'Reduce triage time.')
-    expect(spy).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.objectContaining({ maxTokens: 400 }),
-    )
-    const opts = spy.mock.calls[0]?.[1] as Record<string, unknown> | undefined
-    expect(opts).not.toHaveProperty('model')
+    expect(spy).toHaveBeenCalledWith('draft_assist', {
+      kind: 'objective',
+      draft: 'Reduce triage time.',
+    })
   })
 
-  it('returns the improved text when tryCallLLM succeeds', async () => {
-    vi.spyOn(llm, 'tryCallLLM').mockResolvedValue('Clear Project Background text.')
+  it('returns the improved text when tryCallOperation succeeds', async () => {
+    vi.spyOn(llm, 'tryCallOperation').mockResolvedValue('Clear Project Background text.')
     await expect(
       requestDraftAssist('background', 'messy notes about the problem'),
     ).resolves.toBe('Clear Project Background text.')

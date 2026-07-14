@@ -1,65 +1,55 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { callLLM, LlmError, tryCallLLM } from '@/lib/llm'
+import { callOperation, LlmError, tryCallOperation } from '@/lib/llm'
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
-describe('callLLM', () => {
-  it('returns the assistant message content on a well-formed 200 response', async () => {
+describe('callOperation', () => {
+  it('returns text from a well-formed 200 { text } response', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
-        json: async () => ({
-          choices: [{ message: { content: 'hello from proxy' } }],
-        }),
+        json: async () => ({ text: 'hello from gateway' }),
       }),
     )
 
-    const text = await callLLM([{ role: 'user', content: 'hi' }])
-    expect(text).toBe('hello from proxy')
+    const text = await callOperation('draft_assist', {
+      kind: 'background',
+      draft: 'hi',
+    })
+    expect(text).toBe('hello from gateway')
     expect(fetch).toHaveBeenCalledWith(
       '/api/llm',
       expect.objectContaining({ method: 'POST' }),
     )
   })
 
-  it('omits model from the request body when the caller does not supply one', async () => {
+  it('sends operation + input only (no messages[] / system / model)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({
-        choices: [{ message: { content: 'ok' } }],
-      }),
+      json: async () => ({ text: 'ok' }),
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await callLLM([{ role: 'user', content: 'hi' }])
+    await callOperation('draft_assist', {
+      kind: 'objective',
+      draft: 'Reduce triage time.',
+    })
 
     const init = fetchMock.mock.calls[0]?.[1] as { body?: string }
     const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>
+    expect(body).toEqual({
+      operation: 'draft_assist',
+      input: { kind: 'objective', draft: 'Reduce triage time.' },
+    })
+    expect(body).not.toHaveProperty('messages')
     expect(body).not.toHaveProperty('model')
-    expect(body.messages).toEqual([{ role: 'user', content: 'hi' }])
-  })
-
-  it('includes model in the request body when the caller supplies one', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        choices: [{ message: { content: 'ok' } }],
-      }),
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    await callLLM([{ role: 'user', content: 'hi' }], { model: 'gpt-test' })
-
-    const init = fetchMock.mock.calls[0]?.[1] as { body?: string }
-    const body = JSON.parse(init.body ?? '{}') as Record<string, unknown>
-    expect(body.model).toBe('gpt-test')
+    expect(body).not.toHaveProperty('max_tokens')
   })
 
   it('throws LlmError with the status on a non-OK response', async () => {
@@ -72,24 +62,28 @@ describe('callLLM', () => {
       }),
     )
 
-    await expect(callLLM([{ role: 'user', content: 'hi' }])).rejects.toSatisfy(
+    await expect(
+      callOperation('draft_assist', { kind: 'background', draft: 'hi' }),
+    ).rejects.toSatisfy(
       (err: unknown) =>
         err instanceof LlmError && err.status === 429 && /429/.test(err.message),
     )
   })
 })
 
-describe('tryCallLLM', () => {
+describe('tryCallOperation', () => {
   it('returns null on failure rather than throwing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
-        status: 500,
-        json: async () => ({ error: 'server' }),
+        status: 503,
+        json: async () => ({ error: 'LLM gateway is disabled.' }),
       }),
     )
 
-    await expect(tryCallLLM([{ role: 'user', content: 'hi' }])).resolves.toBeNull()
+    await expect(
+      tryCallOperation('draft_assist', { kind: 'background', draft: 'hi' }),
+    ).resolves.toBeNull()
   })
 })
